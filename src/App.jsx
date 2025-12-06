@@ -28,7 +28,6 @@ import RestartAltIcon from "@mui/icons-material/RestartAlt";
 import ClearAllIcon from "@mui/icons-material/ClearAll";
 import RemoveCircleOutlineIcon from "@mui/icons-material/RemoveCircleOutline";
 import { useReactToPrint } from "react-to-print";
-import html2pdf from "html2pdf.js"; // Import the PDF library
 import { PrintTemplate } from "./pages/billing/PrintTemplate";
 import { BillReceipt } from "./components/BillRecept";
 import { v4 as uuidv4 } from "uuid";
