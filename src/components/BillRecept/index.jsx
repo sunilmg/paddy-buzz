@@ -1,0 +1,146 @@
+import React from "react";
+import { BillQuadrant, BillRow, Separator, DoubleSeparator } from "./styles";
+import { Box } from "@mui/material";
+
+const formatNum = (num) => {
+  if (num === undefined || num === null || isNaN(num)) return "0=00";
+  const val = Number(num);
+  const parts = val.toFixed(2).split(".");
+  const integerPart = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+  return `${integerPart}=${parts[1]}`;
+};
+
+export const BillReceipt = ({ data, previewMode = false }) => {
+  if (!data) return null;
+
+  const {
+    customerName,
+    date,
+    entries, // Now using the full entries array
+    totalWeight,
+    totalBags,
+    tareWeight,
+    tarePerBag,
+    netWeight,
+    rate,
+    grossAmount,
+    labourCharge,
+    totalLabour,
+    netAfterLabour,
+    adjustments,
+    finalAmount,
+  } = data;
+
+  const Wrapper = previewMode ? Box : BillQuadrant;
+  const wrapperProps = previewMode
+    ? {
+        sx: {
+          p: 4,
+          bgcolor: "#fff",
+          height: "100%",
+          fontFamily: "Courier New",
+        },
+      }
+    : {};
+
+  return (
+    <Wrapper {...wrapperProps}>
+      {/* Header */}
+      <BillRow className="header">
+        <span>{customerName}</span>
+        <span>{date}</span>
+      </BillRow>
+
+      {/* 1. Individual Entries */}
+      {entries.map((entry, idx) => (
+        <BillRow key={idx} className="sub-entry">
+          <span>
+            {entry.weight} - {entry.bags} bags
+          </span>
+        </BillRow>
+      ))}
+
+      <Separator />
+
+      {/* 2. Total Weight & Bags */}
+      <BillRow>
+        <span>
+          {formatNum(totalWeight)} - {totalBags} Total Bags
+        </span>
+      </BillRow>
+
+      {/* 3. Tare Calculation */}
+      <BillRow>
+        <span>
+          {formatNum(tareWeight)} - Tare ({totalBags} * {tarePerBag})
+        </span>
+      </BillRow>
+
+      <Separator />
+
+      {/* 4. Net Weight & Rate */}
+      <BillRow>
+        <span>
+          {parseFloat(netWeight).toFixed(2)} * {rate}
+        </span>
+      </BillRow>
+
+      <Separator />
+
+      {/* 5. Gross Amount */}
+      <BillRow className="total">
+        <span>{formatNum(grossAmount)}</span>
+      </BillRow>
+
+      {/* 6. Labour Charge */}
+      <BillRow>
+        <span>
+          {formatNum(totalLabour)} - Labour ({totalBags} * {labourCharge})
+        </span>
+      </BillRow>
+
+      <Separator />
+
+      {/* 7. Net After Labour */}
+      <BillRow>
+        <span>{formatNum(netAfterLabour)}</span>
+      </BillRow>
+
+      {/* 8. Adjustments (Line by Line) */}
+      {adjustments &&
+        adjustments.map((adj, index) => (
+          <React.Fragment key={index}>
+            <BillRow>
+              <span>
+                {/* Show raw amount */}
+                {formatNum(adj.amount)} {adj.type === "sub" ? "" : "(+)"}
+              </span>
+              <span style={{ textAlign: "right" }}>
+                {adj.note || (adj.type === "sub" ? "Paid by Cash" : "Added")}
+              </span>
+            </BillRow>
+            {/* Show running total after adjustment if needed, or just list them. 
+                Based on your example, you subtract line by line. 
+            */}
+          </React.Fragment>
+        ))}
+
+      <Separator />
+
+      {/* 9. Final Totals */}
+      <BillRow className="total">
+        <span>{formatNum(finalAmount)}</span>
+      </BillRow>
+      <BillRow className="total">
+        <span>{formatNum(finalAmount)}</span>
+      </BillRow>
+
+      <DoubleSeparator />
+
+      {/* Footer */}
+      <BillRow>
+        <span>0000000</span>
+      </BillRow>
+    </Wrapper>
+  );
+};

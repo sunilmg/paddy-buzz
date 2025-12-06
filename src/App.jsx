@@ -1,5 +1,689 @@
+import React, { useState, useEffect, useRef } from "react";
+import {
+  Container,
+  Grid,
+  TextField,
+  Button,
+  Paper,
+  Typography,
+  Box,
+  IconButton,
+  Divider,
+  Chip,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  ThemeProvider,
+  createTheme,
+  Card,
+  Tooltip,
+  Stack,
+  Alert,
+} from "@mui/material";
+import DeleteIcon from "@mui/icons-material/Delete";
+import AddCircleIcon from "@mui/icons-material/AddCircle";
+import PrintIcon from "@mui/icons-material/Print";
+import PictureAsPdfIcon from "@mui/icons-material/PictureAsPdf";
+import RestartAltIcon from "@mui/icons-material/RestartAlt";
+import ClearAllIcon from "@mui/icons-material/ClearAll";
+import RemoveCircleOutlineIcon from "@mui/icons-material/RemoveCircleOutline";
+import { useReactToPrint } from "react-to-print";
+import html2pdf from "html2pdf.js"; // Import the PDF library
+import { PrintTemplate } from "./pages/billing/PrintTemplate";
+import { BillReceipt } from "./components/BillRecept";
+import { v4 as uuidv4 } from "uuid";
+import { jsPDF } from "jspdf";
+import html2canvas from "html2canvas";
+
+const theme = createTheme({
+  palette: {
+    primary: { main: "#1b5e20" },
+    secondary: { main: "#c62828" },
+    background: { default: "#e8f5e9" },
+  },
+  typography: {
+    fontFamily: '"Roboto", sans-serif',
+    h6: { fontWeight: 700 },
+  },
+  components: {
+    MuiButton: {
+      styleOverrides: { root: { borderRadius: 8, fontWeight: "bold" } },
+    },
+    MuiPaper: {
+      styleOverrides: {
+        root: { borderRadius: 12, boxShadow: "0 4px 12px rgba(0,0,0,0.1)" },
+      },
+    },
+  },
+});
+
 function App() {
-  return <>hello</>;
+  // --- Refs ---
+  const printRef = useRef(null); // Reference for the Hidden Print Template
+
+  // --- Form State ---
+  const [customerName, setCustomerName] = useState("");
+  const [date, setDate] = useState(new Date().toISOString().split("T")[0]);
+  const [paddyEntries, setPaddyEntries] = useState([
+    { id: uuidv4(), weight: "", bags: "" },
+  ]);
+  const [tarePerBag, setTarePerBag] = useState(2);
+  const [rate, setRate] = useState("");
+  const [labourCharge, setLabourCharge] = useState(12);
+  const [adjustments, setAdjustments] = useState([]);
+
+  // --- Queue State ---
+  const [printQueue, setPrintQueue] = useState([null, null, null, null]);
+  const [modalOpen, setModalOpen] = useState(false);
+  const [selectedBill, setSelectedBill] = useState(null);
+
+  // --- Calculations ---
+  const [calcs, setCalcs] = useState({
+    totalWeight: 0,
+    totalBags: 0,
+    tareWeight: 0,
+    netWeight: 0,
+    grossAmount: 0,
+    totalLabour: 0,
+    netAfterLabour: 0,
+    finalAmount: 0,
+  });
+
+  useEffect(() => {
+    let totWeight = 0,
+      totBags = 0;
+    paddyEntries.forEach((entry) => {
+      totWeight += Number(entry.weight) || 0;
+      totBags += Number(entry.bags) || 0;
+    });
+
+    const calculatedTare = totBags * Number(tarePerBag);
+    const netWt = totWeight - calculatedTare;
+    const gross = (netWt / 100) * (Number(rate) || 0);
+    const labourTotal = totBags * (Number(labourCharge) || 0);
+    const afterLabour = gross - labourTotal;
+
+    let final = afterLabour;
+    adjustments.forEach((adj) => {
+      if (adj.type === "add") final += Number(adj.amount) || 0;
+      else final -= Number(adj.amount) || 0;
+    });
+
+    setCalcs({
+      totalWeight: totWeight,
+      totalBags: totBags,
+      tareWeight: calculatedTare,
+      netWeight: netWt,
+      grossAmount: gross,
+      totalLabour: labourTotal,
+      netAfterLabour: afterLabour,
+      finalAmount: final,
+    });
+  }, [paddyEntries, tarePerBag, rate, labourCharge, adjustments]);
+
+  // --- Handlers ---
+  const handleClearForm = () => {
+    setCustomerName("");
+    setDate(new Date().toISOString().split("T")[0]);
+    setPaddyEntries([{ id: uuidv4(), weight: "", bags: "" }]);
+    setRate("");
+    setAdjustments([]);
+  };
+
+  const handleClearQueue = () => setPrintQueue([null, null, null, null]);
+
+  const addToQueue = () => {
+    if (!customerName || !rate) {
+      alert("Please enter Customer Name and Rate");
+      return;
+    }
+    const emptyIndex = printQueue.indexOf(null);
+    if (emptyIndex === -1) {
+      alert("Queue Full. Clear some items.");
+      return;
+    }
+
+    const billData = {
+      id: uuidv4(),
+      customerName,
+      date,
+      entries: [...paddyEntries], // Store copy of entries
+      totalWeight: calcs.totalWeight,
+      totalBags: calcs.totalBags,
+      tareWeight: calcs.tareWeight,
+      tarePerBag,
+      netWeight: calcs.netWeight,
+      rate,
+      grossAmount: calcs.grossAmount,
+      labourCharge,
+      totalLabour: calcs.totalLabour,
+      netAfterLabour: calcs.netAfterLabour,
+      adjustments: [...adjustments],
+      finalAmount: calcs.finalAmount,
+    };
+
+    const newQueue = [...printQueue];
+    newQueue[emptyIndex] = billData;
+    setPrintQueue(newQueue);
+  };
+
+  const removeFromQueue = (e, index) => {
+    e.stopPropagation();
+    const newQueue = [...printQueue];
+    newQueue[index] = null;
+    setPrintQueue(newQueue);
+  };
+
+  // --- Printing Logic (Fix for Ref Error) ---
+  const handlePrint = useReactToPrint({
+    contentRef: printRef, // Use contentRef instead of content for newer versions
+    documentTitle: `Paddy_Bill_${customerName || "Print"}`,
+  });
+
+ 
+  const handleSavePdf = async () => {
+    const element = printRef.current;
+    if (printQueue.every((item) => item === null)) {
+      alert("Print Queue is empty! Please add a bill first.");
+      return;
+    }
+
+    if (!element) return;
+
+    // 1. Clone the element
+    const clonedElement = element.cloneNode(true);
+
+    // 2. CRITICAL: Reset ALL hidden/off-screen styles from PrintContainer
+    // The original styled component hides it, so we must override everything
+    clonedElement.style.cssText = `
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 210mm !important;
+    min-height: 297mm !important;
+    padding: 10mm !important;
+    box-sizing: border-box !important;
+    display: flex !important;
+    flex-wrap: wrap !important;
+    align-content: flex-start !important;
+    background: white !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+    z-index: 99999 !important;
+    overflow: visible !important;
+    margin: 0 !important;
+  `;
+
+    document.body.appendChild(clonedElement);
+
+    try {
+      // 3. Give the DOM a moment to render the clone
+      await new Promise((resolve) => setTimeout(resolve, 500));
+
+      // 4. Capture with html2canvas
+      const canvas = await html2canvas(clonedElement, {
+        scale: 2,
+        useCORS: true,
+        allowTaint: true,
+        backgroundColor: "#ffffff",
+      });
+
+      const imgData = canvas.toDataURL("image/jpeg", 1.0);
+
+      // 5. Create PDF
+      const pdf = new jsPDF("p", "mm", "a4");
+      const imgWidth = 210; // A4 width in mm
+      const imgHeight = (canvas.height * imgWidth) / canvas.width;
+
+      pdf.addImage(imgData, "JPEG", 0, 0, imgWidth, imgHeight);
+      pdf.save(`Bill_${customerName || "Batch"}_${new Date().getTime()}.pdf`);
+    } catch (error) {
+      console.error("PDF Generation Error:", error);
+      alert("Failed to generate PDF. Check console for details.");
+    } finally {
+      // 6. Clean up
+      if (document.body.contains(clonedElement)) {
+        document.body.removeChild(clonedElement);
+      }
+    }
+  };
+
+  return (
+    <ThemeProvider theme={theme}>
+      <Box sx={{ bgcolor: "background.default", minHeight: "100vh", pb: 8 }}>
+        {/* Header */}
+        <Box
+          sx={{
+            bgcolor: "primary.main",
+            color: "white",
+            py: 2,
+            px: 3,
+            mb: 4,
+            boxShadow: 3,
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+          }}
+        >
+          <div>
+            <Typography variant="h5" fontWeight="bold">
+              🌾 MRS Paddy Calculator{" "}
+              <Typography variant="caption">Developed by - Sunil MG</Typography>
+            </Typography>
+          </div>
+
+          <Button
+            color="inherit"
+            onClick={handleClearForm}
+            startIcon={<RestartAltIcon />}
+          >
+            Reset Form
+          </Button>
+        </Box>
+
+        <Container maxWidth="xl">
+          <Grid container spacing={3}>
+            {/* LEFT: INPUT */}
+            <Grid item xs={12} lg={7}>
+              <Paper sx={{ p: 3 }}>
+                {/* Basic Info */}
+                <Grid container spacing={2}>
+                  <Grid item xs={12} sm={8}>
+                    <TextField
+                      fullWidth
+                      label="Customer Name"
+                      variant="outlined"
+                      value={customerName}
+                      onChange={(e) => setCustomerName(e.target.value)}
+                    />
+                  </Grid>
+                  <Grid item xs={12} sm={4}>
+                    <TextField
+                      fullWidth
+                      type="date"
+                      label="Date"
+                      InputLabelProps={{ shrink: true }}
+                      value={date}
+                      onChange={(e) => setDate(e.target.value)}
+                    />
+                  </Grid>
+                </Grid>
+
+                {/* Paddy Entries */}
+                <Box
+                  sx={{
+                    my: 3,
+                    p: 2,
+                    border: "1px solid #c8e6c9",
+                    borderRadius: 2,
+                    bgcolor: "#f1f8e9",
+                  }}
+                >
+                  <Typography
+                    variant="subtitle2"
+                    sx={{ mb: 1, color: "primary.main", fontWeight: "bold" }}
+                  >
+                    PADDY ENTRIES
+                  </Typography>
+                  {paddyEntries.map((entry, index) => (
+                    <Grid container spacing={2} key={entry.id} sx={{ mb: 1.5 }}>
+                      <Grid item xs={5}>
+                        <TextField
+                          fullWidth
+                          size="small"
+                          label={`Weight (kg)`}
+                          type="number"
+                          value={entry.weight}
+                          onChange={(e) => {
+                            const list = [...paddyEntries];
+                            list[index].weight = e.target.value;
+                            setPaddyEntries(list);
+                          }}
+                        />
+                      </Grid>
+                      <Grid item xs={5}>
+                        <TextField
+                          fullWidth
+                          size="small"
+                          label="Bags"
+                          type="number"
+                          value={entry.bags}
+                          onChange={(e) => {
+                            const list = [...paddyEntries];
+                            list[index].bags = e.target.value;
+                            setPaddyEntries(list);
+                          }}
+                        />
+                      </Grid>
+                      <Grid item xs={2} display="flex" alignItems="center">
+                        <IconButton
+                          color="error"
+                          onClick={() => {
+                            if (paddyEntries.length > 1)
+                              setPaddyEntries(
+                                paddyEntries.filter((p) => p.id !== entry.id)
+                              );
+                          }}
+                          disabled={paddyEntries.length === 1}
+                        >
+                          <DeleteIcon />
+                        </IconButton>
+                      </Grid>
+                    </Grid>
+                  ))}
+                  <Button
+                    startIcon={<AddCircleIcon />}
+                    size="small"
+                    variant="text"
+                    onClick={() =>
+                      setPaddyEntries([
+                        ...paddyEntries,
+                        { id: uuidv4(), weight: "", bags: "" },
+                      ])
+                    }
+                  >
+                    Add Another Row
+                  </Button>
+                </Box>
+
+                {/* Rates */}
+                <Grid container spacing={2} sx={{ mb: 3 }}>
+                  <Grid item xs={4}>
+                    <TextField
+                      fullWidth
+                      label="Tare/Bag (kg)"
+                      type="number"
+                      value={tarePerBag}
+                      onChange={(e) => setTarePerBag(e.target.value)}
+                    />
+                  </Grid>
+                  <Grid item xs={4}>
+                    <TextField
+                      fullWidth
+                      label="Rate / Quintal"
+                      type="number"
+                      required
+                      sx={{ input: { fontWeight: "bold" } }}
+                      value={rate}
+                      onChange={(e) => setRate(e.target.value)}
+                    />
+                  </Grid>
+                  <Grid item xs={4}>
+                    <TextField
+                      fullWidth
+                      label="Labour Charge"
+                      type="number"
+                      value={labourCharge}
+                      onChange={(e) => setLabourCharge(e.target.value)}
+                    />
+                  </Grid>
+                </Grid>
+
+                {/* Adjustments */}
+                <Divider sx={{ mb: 2 }} textAlign="left">
+                  <Chip label="Adjustments / Cash" />
+                </Divider>
+                {adjustments.map((adj, index) => (
+                  <Grid
+                    container
+                    spacing={1}
+                    key={adj.id}
+                    sx={{ mb: 1, alignItems: "center" }}
+                  >
+                    <Grid item xs={2}>
+                      <Chip
+                        label={adj.type === "add" ? "+" : "-"}
+                        color={adj.type === "add" ? "success" : "warning"}
+                        size="small"
+                      />
+                    </Grid>
+                    <Grid item xs={4}>
+                      <TextField
+                        fullWidth
+                        size="small"
+                        label="Amount"
+                        type="number"
+                        value={adj.amount}
+                        onChange={(e) => {
+                          const list = [...adjustments];
+                          list[index].amount = e.target.value;
+                          setAdjustments(list);
+                        }}
+                      />
+                    </Grid>
+                    <Grid item xs={5}>
+                      <TextField
+                        fullWidth
+                        size="small"
+                        label="Note (e.g. Paid Cash)"
+                        value={adj.note}
+                        onChange={(e) => {
+                          const list = [...adjustments];
+                          list[index].note = e.target.value;
+                          setAdjustments(list);
+                        }}
+                      />
+                    </Grid>
+                    <Grid item xs={1}>
+                      <IconButton
+                        size="small"
+                        onClick={() =>
+                          setAdjustments(
+                            adjustments.filter((a) => a.id !== adj.id)
+                          )
+                        }
+                      >
+                        <RemoveCircleOutlineIcon />
+                      </IconButton>
+                    </Grid>
+                  </Grid>
+                ))}
+
+                <Stack direction="row" spacing={1} sx={{ mt: 1 }}>
+                  <Button
+                    variant="outlined"
+                    color="warning"
+                    size="small"
+                    onClick={() =>
+                      setAdjustments([
+                        ...adjustments,
+                        { id: uuidv4(), type: "sub", amount: "", note: "" },
+                      ])
+                    }
+                  >
+                    - Deduct Cash
+                  </Button>
+                  <Button
+                    variant="outlined"
+                    color="success"
+                    size="small"
+                    onClick={() =>
+                      setAdjustments([
+                        ...adjustments,
+                        { id: uuidv4(), type: "add", amount: "", note: "" },
+                      ])
+                    }
+                  >
+                    + Add Charge
+                  </Button>
+                </Stack>
+
+                {/* Live Totals */}
+                <Paper
+                  elevation={0}
+                  sx={{
+                    mt: 4,
+                    p: 2,
+                    bgcolor: "#263238",
+                    color: "white",
+                    borderRadius: 2,
+                  }}
+                >
+                  <Grid container alignItems="center">
+                    <Grid item xs={6}>
+                      <Typography variant="body2" sx={{ opacity: 0.7 }}>
+                        TOTAL WEIGHT: {calcs.totalWeight} kg
+                      </Typography>
+                      <Typography variant="body2" sx={{ opacity: 0.7 }}>
+                        TOTAL BAGS: {calcs.totalBags}
+                      </Typography>
+                    </Grid>
+                    <Grid item xs={6} textAlign="right">
+                      <Typography variant="caption" sx={{ opacity: 0.7 }}>
+                        FINAL PAYABLE
+                      </Typography>
+                      <Typography variant="h4" fontWeight="bold">
+                        ₹
+                        {calcs.finalAmount.toLocaleString("en-IN", {
+                          minimumFractionDigits: 2,
+                        })}
+                      </Typography>
+                    </Grid>
+                  </Grid>
+                </Paper>
+
+                <Button
+                  variant="contained"
+                  size="large"
+                  fullWidth
+                  sx={{ mt: 3, height: 50 }}
+                  onClick={addToQueue}
+                >
+                  Add Bill to Queue
+                </Button>
+              </Paper>
+            </Grid>
+
+            {/* RIGHT: QUEUE */}
+            <Grid item xs={12} lg={5}>
+              <Paper sx={{ p: 3, height: "100%", bgcolor: "#fff" }}>
+                <Box
+                  sx={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    mb: 2,
+                  }}
+                >
+                  <Typography variant="h6">Print Queue (A4)</Typography>
+                  <Button
+                    size="small"
+                    color="error"
+                    onClick={handleClearQueue}
+                    startIcon={<ClearAllIcon />}
+                  >
+                    Clear All
+                  </Button>
+                </Box>
+
+                {/* Visualizer Grid */}
+                <Box
+                  sx={{
+                    display: "grid",
+                    gridTemplateColumns: "1fr 1fr",
+                    gridTemplateRows: "1fr 1fr",
+                    gap: 2,
+                    aspectRatio: "1 / 1.414",
+                    bgcolor: "#eeeeee",
+                    p: 2,
+                    borderRadius: 2,
+                  }}
+                >
+                  {printQueue.map((item, index) => (
+                    <Card
+                      key={index}
+                      onClick={() => {
+                        if (item) {
+                          setSelectedBill(item);
+                          setModalOpen(true);
+                        }
+                      }}
+                      sx={{
+                        cursor: item ? "pointer" : "default",
+                        bgcolor: item ? "#fff" : "#e0e0e0",
+                        display: "flex",
+                        flexDirection: "column",
+                        justifyContent: "center",
+                        alignItems: "center",
+                        position: "relative",
+                        border: item ? "2px solid #4caf50" : "none",
+                      }}
+                    >
+                      {item ? (
+                        <>
+                          <Box sx={{ textAlign: "center" }}>
+                            <Typography variant="subtitle2" fontWeight="bold">
+                              {item.customerName}
+                            </Typography>
+                            <Typography variant="body2" color="primary">
+                              ₹{Math.round(item.finalAmount)}
+                            </Typography>
+                          </Box>
+                          <IconButton
+                            size="small"
+                            color="error"
+                            sx={{ position: "absolute", top: 0, right: 0 }}
+                            onClick={(e) => removeFromQueue(e, index)}
+                          >
+                            <RemoveCircleOutlineIcon fontSize="small" />
+                          </IconButton>
+                        </>
+                      ) : (
+                        <Typography variant="caption" color="text.disabled">
+                          Empty
+                        </Typography>
+                      )}
+                    </Card>
+                  ))}
+                </Box>
+
+                <Stack direction="row" spacing={2} sx={{ mt: 3 }}>
+                  <Button
+                    variant="contained"
+                    fullWidth
+                    size="large"
+                    startIcon={<PrintIcon />}
+                    onClick={handlePrint}
+                  >
+                    Print
+                  </Button>
+                  <Button
+                    variant="outlined"
+                    fullWidth
+                    size="large"
+                    startIcon={<PictureAsPdfIcon />}
+                    onClick={handleSavePdf}
+                  >
+                    Save PDF
+                  </Button>
+                </Stack>
+
+                <Alert severity="info" sx={{ mt: 2, fontSize: "0.8rem" }}>
+                  Print works best on PC. For Mobile, use "Save PDF".
+                </Alert>
+              </Paper>
+            </Grid>
+          </Grid>
+        </Container>
+
+        {/* Modal Preview */}
+        <Dialog
+          open={modalOpen}
+          onClose={() => setModalOpen(false)}
+          maxWidth="sm"
+          fullWidth
+        >
+          <DialogTitle>Bill Preview</DialogTitle>
+          <DialogContent dividers sx={{ bgcolor: "#f5f5f5", p: 2 }}>
+            <BillReceipt data={selectedBill} previewMode={true} />
+          </DialogContent>
+        </Dialog>
+
+        {/* Hidden Print Template */}
+
+        <PrintTemplate ref={printRef} queue={printQueue} />
+      </Box>
+    </ThemeProvider>
+  );
 }
 
 export default App;
