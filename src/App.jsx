@@ -180,7 +180,6 @@ function App() {
     documentTitle: `Paddy_Bill_${customerName || "Print"}`,
   });
 
- 
   const handleSavePdf = async () => {
     const element = printRef.current;
     if (printQueue.every((item) => item === null)) {
@@ -193,55 +192,58 @@ function App() {
     // 1. Clone the element
     const clonedElement = element.cloneNode(true);
 
-    // 2. CRITICAL: Reset ALL hidden/off-screen styles from PrintContainer
-    // The original styled component hides it, so we must override everything
+    // 2. INVISIBLE STYLING:
+    // - We keep it "visible" for the browser renderer
+    // - But we put it BEHIND everything (z-index: -9999) so the user can't see it.
     clonedElement.style.cssText = `
-    position: fixed !important;
-    top: 0 !important;
-    left: 0 !important;
-    width: 210mm !important;
-    min-height: 297mm !important;
-    padding: 10mm !important;
-    box-sizing: border-box !important;
-    display: flex !important;
-    flex-wrap: wrap !important;
-    align-content: flex-start !important;
-    background: white !important;
-    opacity: 1 !important;
-    visibility: visible !important;
-    z-index: 99999 !important;
-    overflow: visible !important;
-    margin: 0 !important;
-  `;
+      position: fixed !important;
+      left: 0 !important;
+      top: 0 !important;
+      width: 210mm !important;
+      min-height: 297mm !important;
+      padding: 10mm !important;
+      box-sizing: border-box !important;
+      display: flex !important;
+      flex-wrap: wrap !important;
+      align-content: flex-start !important;
+      background: white !important;
+      
+      /* CRITICAL FIXES FOR USER EXPERIENCE */
+      visibility: visible !important; /* Needed for capture */
+      z-index: -9999 !important;      /* Hides it behind your app background */
+      opacity: 1 !important;          /* Needed for capture */
+      pointer-events: none !important; /* Prevents interference with clicks */
+    `;
 
     document.body.appendChild(clonedElement);
 
     try {
-      // 3. Give the DOM a moment to render the clone
-      await new Promise((resolve) => setTimeout(resolve, 500));
+      // 3. Short wait to ensure DOM paints (invisible to user)
+      await new Promise((resolve) => setTimeout(resolve, 100));
 
-      // 4. Capture with html2canvas
+      // 4. Capture
       const canvas = await html2canvas(clonedElement, {
         scale: 2,
         useCORS: true,
         allowTaint: true,
         backgroundColor: "#ffffff",
+        scrollY: 0, // Ensure we capture from the top of the clone
       });
 
-      const imgData = canvas.toDataURL("image/jpeg", 1.0);
+      const imgData = canvas.toDataURL("image/jpeg", 0.98);
 
-      // 5. Create PDF
+      // 5. Generate PDF
       const pdf = new jsPDF("p", "mm", "a4");
-      const imgWidth = 210; // A4 width in mm
+      const imgWidth = 210;
       const imgHeight = (canvas.height * imgWidth) / canvas.width;
 
       pdf.addImage(imgData, "JPEG", 0, 0, imgWidth, imgHeight);
-      pdf.save(`Bill_${customerName || "Batch"}_${new Date().getTime()}.pdf`);
+      pdf.save(`Bill_${customerName || "Print"}_${Date.now()}.pdf`);
     } catch (error) {
-      console.error("PDF Generation Error:", error);
-      alert("Failed to generate PDF. Check console for details.");
+      console.error("PDF Error:", error);
+      alert("PDF generation failed.");
     } finally {
-      // 6. Clean up
+      // 6. Cleanup
       if (document.body.contains(clonedElement)) {
         document.body.removeChild(clonedElement);
       }
