@@ -1,17 +1,46 @@
 import styled from "@emotion/styled";
 
+// export const PrintContainer = styled.div`
+//   /* Default state: Hidden completely from the app UI */
+//   display: none;
+
+//   /* Print media query still useful if user uses Ctrl+P */
+//   @media print {
+//     display: flex;
+//     position: relative;
+//     z-index: 9999;
+//     height: auto;
+//     overflow: visible;
+//     width: 210mm;
+//     height: 297mm;
+//   }
+// `;
+
+// src/styles.js
+
 export const PrintContainer = styled.div`
-  /* Default state: Hidden completely from the app UI */
+  /* Hiding strategy 1: Hide completely by default */
   display: none;
 
-  /* Print media query still useful if user uses Ctrl+P */
+  /* Hiding strategy 2 (For PDF/Testing): Absolute off-screen 
+  position: absolute;
+  top: -10000px;
+  left: -10000px;
+  opacity: 0;
+  */
+
+  /* CRITICAL: When printing, make it a visible, non-relative block */
   @media print {
-    display: flex;
-    position: relative;
+    display: flex; /* Enables the flex grid */
+    position: relative; /* Restores normal flow for printing */
     z-index: 9999;
+
+    /* A4 Dimensions for 2x2 Quadrants */
     width: 210mm;
-    height: auto;
-    overflow: visible;
+    height: 297mm;
+    flex-wrap: wrap; /* Enables the 2x2 layout */
+    align-content: flex-start;
+    overflow: hidden;
   }
 `;
 
@@ -38,8 +67,17 @@ export const BillQuadrant = styled.div`
     border-bottom: none;
   }
 
-  @media print {
+  /* @media print {
+    width: 50%;
+    height: 50%;
     border: none; // Remove guidelines on actual print
+  } */
+  @media print {
+    width: 50%; /* Takes up exactly half the width */
+    height: 50%; /* Takes up exactly half the height */
+    border: none;
+    box-sizing: border-box; /* Ensure padding/margin don't break 50% width/height */
+    padding: 15px 25px; /* Use padding for inner margins */
   }
 `;
 
