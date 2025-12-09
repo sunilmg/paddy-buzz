@@ -2,13 +2,14 @@ import styled from "@emotion/styled";
 
 export const BillQuadrant = styled.div`
   width: 50%;
-  height: 50%; // Approx 148mm
+  height: calc(100% / 3);
   padding: 15px 25px;
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
   font-family: "Courier New", Courier, monospace;
-  font-size: 11px;
+  font-size: 13px;
+  font-weight: 600;
   color: #000;
   line-height: 1.3;
 
@@ -19,7 +20,7 @@ export const BillQuadrant = styled.div`
   &:nth-of-type(2n) {
     border-right: none;
   }
-  &:nth-of-type(n + 3) {
+  &:nth-of-type(n + 5) {
     border-bottom: none;
   }
 
@@ -35,17 +36,17 @@ export const BillRow = styled.div`
   align-items: center;
 
   &.header {
-    font-weight: bold;
-    font-size: 14px;
+    font-weight: 800; /* Extra bold */
+    font-size: 16px;
     margin-bottom: 8px;
     text-transform: uppercase;
-    border-bottom: 1px solid #000;
+    border-bottom: 2px solid #000;
     padding-bottom: 4px;
   }
 
   &.total {
     font-weight: 900;
-    font-size: 15px;
+    font-size: 17px;
     margin: 4px 0;
   }
 

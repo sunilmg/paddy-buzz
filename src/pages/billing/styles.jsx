@@ -46,13 +46,14 @@ export const PrintContainer = styled.div`
 
 export const BillQuadrant = styled.div`
   width: 50%;
-  height: 50%; // Approx 148mm
+  height: calc(100% / 3); /* Makes it 33.333% tall */
   padding: 15px 25px;
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
-  font-family: "Courier New", Courier, monospace;
+  /* font-family: "Courier New", Courier, monospace; */
   font-size: 11px;
+  font-weight: 500;
   color: #000;
   line-height: 1.3;
 
@@ -74,7 +75,7 @@ export const BillQuadrant = styled.div`
   } */
   @media print {
     width: 50%; /* Takes up exactly half the width */
-    height: 50%; /* Takes up exactly half the height */
+    height: calc(100% / 3); /* Takes up exactly half the height */
     border: none;
     box-sizing: border-box; /* Ensure padding/margin don't break 50% width/height */
     padding: 15px 25px; /* Use padding for inner margins */

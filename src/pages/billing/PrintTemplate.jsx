@@ -4,7 +4,7 @@ import { BillReceipt } from "../../components/BillRecept";
 
 // Must use forwardRef to allow react-to-print to grab the DOM element
 export const PrintTemplate = forwardRef(({ queue }, ref) => {
-  const slots = [0, 1, 2, 3];
+  const slots = [0, 1, 2, 3, 4, 5];
 
   return (
     <PrintContainer ref={ref}>
@@ -14,7 +14,7 @@ export const PrintTemplate = forwardRef(({ queue }, ref) => {
             <BillReceipt data={queue[i]} />
           ) : (
             // Empty placeholder
-            <div style={{ width: "50%", height: "50%" }} />
+            <div style={{ width: "50%", height: "33.33%" }} />
           )}
         </React.Fragment>
       ))}

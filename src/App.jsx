@@ -72,7 +72,14 @@ function App() {
   const [adjustments, setAdjustments] = useState([]);
 
   // --- Queue State ---
-  const [printQueue, setPrintQueue] = useState([null, null, null, null]);
+  const [printQueue, setPrintQueue] = useState([
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+  ]);
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedBill, setSelectedBill] = useState(null);
 
@@ -129,7 +136,7 @@ function App() {
     setAdjustments([]);
   };
 
-  const handleClearQueue = () => setPrintQueue([null, null, null, null]);
+  const handleClearQueue = () => setPrintQueue([null, null, null, null, null, null]);
 
   const addToQueue = () => {
     if (!customerName || !rate) {
@@ -199,6 +206,7 @@ function App() {
       left: 0 !important;
       top: 0 !important;
       width: 210mm !important;
+      height: 297mm !important;
       min-height: 297mm !important;
       padding: 10mm !important;
       box-sizing: border-box !important;
@@ -580,10 +588,10 @@ function App() {
                 <Box
                   sx={{
                     display: "grid",
-                    gridTemplateColumns: "1fr 1fr",
-                    gridTemplateRows: "1fr 1fr",
+                    gridTemplateColumns: "1fr 1fr", // Still 2 columns wide
+                    gridTemplateRows: "repeat(3, 1fr)", // 3 rows tall for 6 items
                     gap: 2,
-                    aspectRatio: "1 / 1.414",
+                    aspectRatio: "1 / 1.414", // Maintain A4 aspect ratio
                     bgcolor: "#eeeeee",
                     p: 2,
                     borderRadius: 2,
