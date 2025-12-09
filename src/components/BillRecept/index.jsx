@@ -55,7 +55,7 @@ export const BillReceipt = ({ data, previewMode = false }) => {
       {entries.map((entry, idx) => (
         <BillRow key={idx} className="sub-entry">
           <span>
-            {entry.weight} - {entry.bags} bags
+            {entry.weight} - {entry.bags} ಚೀಲ
           </span>
         </BillRow>
       ))}
@@ -65,14 +65,14 @@ export const BillReceipt = ({ data, previewMode = false }) => {
       {/* 2. Total Weight & Bags */}
       <BillRow>
         <span>
-          {formatNum(totalWeight)} - {totalBags} Total Bags
+          {formatNum(totalWeight)} - {totalBags} ಚೀಲ
         </span>
       </BillRow>
 
       {/* 3. Tare Calculation */}
       <BillRow>
         <span>
-          {formatNum(tareWeight)} - Tare ({totalBags} * {tarePerBag})
+          {formatNum(tareWeight)} - ಪೆಚ್ಚು ({totalBags} * {tarePerBag})
         </span>
       </BillRow>
 
@@ -81,7 +81,7 @@ export const BillReceipt = ({ data, previewMode = false }) => {
       {/* 4. Net Weight & Rate */}
       <BillRow>
         <span>
-          {parseFloat(netWeight).toFixed(2)} * {rate}
+          {parseFloat(netWeight).toFixed(2)} * {rate} ದರ
         </span>
       </BillRow>
 
@@ -95,7 +95,7 @@ export const BillReceipt = ({ data, previewMode = false }) => {
       {/* 6. Labour Charge */}
       <BillRow>
         <span>
-          {formatNum(totalLabour)} - Labour ({totalBags} * {labourCharge})
+          {formatNum(totalLabour)} - ಹಮಾಲಿ ({totalBags} * {labourCharge})
         </span>
       </BillRow>
 
