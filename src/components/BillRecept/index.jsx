@@ -80,7 +80,7 @@ export const BillReceipt = ({ data, previewMode = false }) => {
           {parseFloat(netWeight).toFixed(2)} * {rate} ದರ
         </span>
       </BillRow>
-      {/* <Separator /> */}
+      <Separator />
       {/* 5. Gross Amount */}
       {/* <BillRow className="total">
         <span>{formatNum(grossAmount)}</span>
