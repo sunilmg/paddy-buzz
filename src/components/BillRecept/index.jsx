@@ -13,7 +13,10 @@ const formatNum = (num) => {
 export const BillReceipt = ({ data, previewMode = false }) => {
   if (!data) return null;
 
+  console.log("Rendering BillReceipt with data:", data);
+
   const {
+    stockPlace,
     customerName,
     date,
     entries, // Now using the full entries array
@@ -48,6 +51,9 @@ export const BillReceipt = ({ data, previewMode = false }) => {
   return (
     <Wrapper {...wrapperProps}>
       {/* Header */}
+      <BillRow className="subEntry">
+        <span> {stockPlace}</span>
+      </BillRow>
       <BillRow className="header">
         <span>{customerName}</span>
         <span>{formattedDate}</span>

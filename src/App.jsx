@@ -71,6 +71,7 @@ function App() {
   const [rate, setRate] = useState("");
   const [labourCharge, setLabourCharge] = useState(12);
   const [adjustments, setAdjustments] = useState([]);
+  const [stockPlace, setStockPlace] = useState([]);
 
   // --- Queue State ---
   const [printQueue, setPrintQueue] = useState([
@@ -154,6 +155,7 @@ function App() {
     const billData = {
       id: uuidv4(),
       customerName,
+      stockPlace,
       date,
       entries: [...paddyEntries], // Store copy of entries
       totalWeight: calcs.totalWeight,
@@ -299,6 +301,15 @@ function App() {
               <Paper sx={{ p: 3 }}>
                 {/* Basic Info */}
                 <Grid container spacing={2}>
+                  <Grid item xs={12} sm={18}>
+                    <TextField
+                      fullWidth
+                      label="Stock Place"
+                      variant="outlined"
+                      value={stockPlace}
+                      onChange={(e) => setStockPlace(e.target.value)}
+                    />
+                  </Grid>
                   <Grid item xs={12} sm={8}>
                     <TextField
                       fullWidth
