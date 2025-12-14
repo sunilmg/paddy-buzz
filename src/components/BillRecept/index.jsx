@@ -105,7 +105,7 @@ export const BillReceipt = ({ data, previewMode = false }) => {
                 {/* Show raw amount */}
                 {formatNum(adj.amount)} {adj.type === "sub" ? "" : "(+)"}
               </span>
-              <span style={{ textAlign: "right" }}>
+              <span style={{ textAlign: "center", marginRight: "220px" }}>
                 {adj.note || (adj.type === "sub" ? "Paid by Cash" : "Added")}
               </span>
             </BillRow>
