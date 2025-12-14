@@ -33,6 +33,7 @@ import { BillReceipt } from "./components/BillRecept";
 import { v4 as uuidv4 } from "uuid";
 import { jsPDF } from "jspdf";
 import html2canvas from "html2canvas";
+import Avatar from "@mui/material/Avatar";
 
 const theme = createTheme({
   palette: {
@@ -136,7 +137,8 @@ function App() {
     setAdjustments([]);
   };
 
-  const handleClearQueue = () => setPrintQueue([null, null, null, null, null, null]);
+  const handleClearQueue = () =>
+    setPrintQueue([null, null, null, null, null, null]);
 
   const addToQueue = () => {
     if (!customerName || !rate) {
@@ -529,6 +531,7 @@ function App() {
                   }}
                 >
                   <Grid container alignItems="center">
+                    {/* grid 1 */}
                     <Grid item xs={6}>
                       <Typography variant="body2" sx={{ opacity: 0.7 }}>
                         TOTAL WEIGHT: {calcs.totalWeight} kg
@@ -537,11 +540,16 @@ function App() {
                         TOTAL BAGS: {calcs.totalBags}
                       </Typography>
                     </Grid>
+                    {/* grid 2 */}
                     <Grid item xs={6} textAlign="right">
                       <Typography variant="caption" sx={{ opacity: 0.7 }}>
                         FINAL PAYABLE
                       </Typography>
-                      <Typography variant="h4" fontWeight="bold">
+                      <Typography
+                        variant="h4"
+                        fontWeight="bold"
+                        sx={{ marginLeft: "30px" }}
+                      >
                         ₹
                         {calcs.finalAmount.toLocaleString("en-IN", {
                           minimumFractionDigits: 2,

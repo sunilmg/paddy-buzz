@@ -26,7 +26,7 @@ export const BillReceipt = ({ data, previewMode = false }) => {
     grossAmount,
     labourCharge,
     totalLabour,
-    netAfterLabour,
+    // netAfterLabour,
     adjustments,
     finalAmount,
   } = data;
@@ -50,17 +50,16 @@ export const BillReceipt = ({ data, previewMode = false }) => {
         <span>{customerName}</span>
         <span>{date}</span>
       </BillRow>
-
       {/* 1. Individual Entries */}
-      {entries.map((entry, idx) => (
-        <BillRow key={idx} className="sub-entry">
-          <span>
-            {entry.weight} - {entry.bags} ಚೀಲ
-          </span>
-        </BillRow>
-      ))}
-
-      <Separator />
+      {entries.length > 1 &&
+        entries.map((entry, idx) => (
+          <BillRow key={idx} className="sub-entry">
+            <span>
+              {entry.weight} - {entry.bags} ಚೀಲ
+            </span>
+          </BillRow>
+        ))}
+      {entries.length > 1 && <Separator />}
 
       {/* 2. Total Weight & Bags */}
       <BillRow>
@@ -68,44 +67,35 @@ export const BillReceipt = ({ data, previewMode = false }) => {
           {formatNum(totalWeight)} - {totalBags} ಚೀಲ
         </span>
       </BillRow>
-
       {/* 3. Tare Calculation */}
       <BillRow>
         <span>
           {formatNum(tareWeight)} - ಪೆಚ್ಚು ({totalBags} * {tarePerBag})
         </span>
       </BillRow>
-
       <Separator />
-
       {/* 4. Net Weight & Rate */}
       <BillRow>
         <span>
           {parseFloat(netWeight).toFixed(2)} * {rate} ದರ
         </span>
       </BillRow>
-
-      <Separator />
-
+      {/* <Separator /> */}
       {/* 5. Gross Amount */}
-      <BillRow className="total">
+      {/* <BillRow className="total">
         <span>{formatNum(grossAmount)}</span>
-      </BillRow>
-
+      </BillRow> */}
       {/* 6. Labour Charge */}
       <BillRow>
         <span>
           {formatNum(totalLabour)} - ಹಮಾಲಿ ({totalBags} * {labourCharge})
         </span>
       </BillRow>
-
-      <Separator />
-
-      {/* 7. Net After Labour */}
+      {/* <Separator /> */}
+      {/* 7. Net After Labour
       <BillRow>
         <span>{formatNum(netAfterLabour)}</span>
-      </BillRow>
-
+      </BillRow> */}
       {/* 8. Adjustments (Line by Line) */}
       {adjustments &&
         adjustments.map((adj, index) => (
@@ -124,9 +114,7 @@ export const BillReceipt = ({ data, previewMode = false }) => {
             */}
           </React.Fragment>
         ))}
-
       <Separator />
-
       {/* 9. Final Totals */}
       <BillRow className="total">
         <span>{formatNum(finalAmount)}</span>
@@ -134,9 +122,7 @@ export const BillReceipt = ({ data, previewMode = false }) => {
       <BillRow className="total">
         <span>{formatNum(finalAmount)}</span>
       </BillRow>
-
       <DoubleSeparator />
-
       {/* Footer */}
       <BillRow>
         <span>0000000</span>
