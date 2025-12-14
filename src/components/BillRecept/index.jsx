@@ -26,7 +26,7 @@ export const BillReceipt = ({ data, previewMode = false }) => {
     grossAmount,
     labourCharge,
     totalLabour,
-    // netAfterLabour,
+    netAfterLabour,
     adjustments,
     finalAmount,
   } = data;
@@ -43,12 +43,14 @@ export const BillReceipt = ({ data, previewMode = false }) => {
       }
     : {};
 
+  const formattedDate = new Date(date).toLocaleDateString("en-GB");
+
   return (
     <Wrapper {...wrapperProps}>
       {/* Header */}
       <BillRow className="header">
         <span>{customerName}</span>
-        <span>{date}</span>
+        <span>{formattedDate}</span>
       </BillRow>
       {/* 1. Individual Entries */}
       {entries.length > 1 &&
@@ -82,20 +84,26 @@ export const BillReceipt = ({ data, previewMode = false }) => {
       </BillRow>
       <Separator />
       {/* 5. Gross Amount */}
-      {/* <BillRow className="total">
+      <BillRow className="total">
         <span>{formatNum(grossAmount)}</span>
-      </BillRow> */}
+      </BillRow>
       {/* 6. Labour Charge */}
       <BillRow>
         <span>
           {formatNum(totalLabour)} - ಹಮಾಲಿ ({totalBags} * {labourCharge})
         </span>
       </BillRow>
-      {/* <Separator /> */}
-      {/* 7. Net After Labour
-      <BillRow>
-        <span>{formatNum(netAfterLabour)}</span>
-      </BillRow> */}
+
+      {/* 7. Net After Labour */}
+      {adjustments.length > 0 && (
+        <>
+          <Separator />
+          <BillRow>
+            <span>{formatNum(netAfterLabour)}</span>
+          </BillRow>
+        </>
+      )}
+
       {/* 8. Adjustments (Line by Line) */}
       {adjustments &&
         adjustments.map((adj, index) => (
