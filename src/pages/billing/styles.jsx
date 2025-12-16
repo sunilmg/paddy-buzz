@@ -58,8 +58,8 @@ export const BillQuadrant = styled.div`
   line-height: 1.3;
 
   // Dashed lines for cutting guidance (optional)
-  border-right: 1px dashed #e0e0e0;
-  border-bottom: 1px dashed #e0e0e0;
+  // border-right: 1px dashed #e0e0e0;
+  // border-bottom: 1px dashed #e0e0e0;
 
   &:nth-of-type(2n) {
     border-right: none;
