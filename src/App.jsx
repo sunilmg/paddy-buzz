@@ -19,6 +19,8 @@ import {
   Tooltip,
   Stack,
   Alert,
+  Tabs,
+  Tab,
 } from "@mui/material";
 import DeleteIcon from "@mui/icons-material/Delete";
 import AddCircleIcon from "@mui/icons-material/AddCircle";
@@ -30,6 +32,7 @@ import RemoveCircleOutlineIcon from "@mui/icons-material/RemoveCircleOutline";
 import { useReactToPrint } from "react-to-print";
 import { PrintTemplate } from "./pages/billing/PrintTemplate";
 import { BillReceipt } from "./components/BillRecept";
+import { InterestReceipt } from "./components/InterestReceipt";
 import { v4 as uuidv4 } from "uuid";
 import { jsPDF } from "jspdf";
 import html2canvas from "html2canvas";
@@ -72,6 +75,12 @@ function App() {
   const [labourCharge, setLabourCharge] = useState(12);
   const [adjustments, setAdjustments] = useState([]);
   const [stockPlace, setStockPlace] = useState([]);
+  
+  // --- Tab State ---
+  const [tabValue, setTabValue] = useState(0);
+
+  // --- Interest Form State ---
+  const [intEntries, setIntEntries] = useState([]);
 
   // --- Queue State ---
   const [printQueue, setPrintQueue] = useState([
@@ -136,6 +145,7 @@ function App() {
     setPaddyEntries([{ id: uuidv4(), weight: "", bags: "" }]);
     setRate("");
     setAdjustments([]);
+    setIntEntries([]);
   };
 
   const handleClearQueue = () =>
@@ -170,6 +180,44 @@ function App() {
       netAfterLabour: calcs.netAfterLabour,
       adjustments: [...adjustments],
       finalAmount: calcs.finalAmount,
+    };
+
+    const newQueue = [...printQueue];
+    newQueue[emptyIndex] = billData;
+    setPrintQueue(newQueue);
+  };
+
+  const addInterestToQueue = () => {
+    if (!customerName) {
+      alert("Please enter Customer Name");
+      return;
+    }
+    if (intEntries.length === 0) {
+       alert("Please add at least one entry");
+       return;
+    }
+    const emptyIndex = printQueue.indexOf(null);
+    if (emptyIndex === -1) {
+      alert("Queue Full. Clear some items.");
+      return;
+    }
+
+    // Calculate final total just for metadata (optional)
+    let final = 0;
+    intEntries.forEach(adj => {
+       if(adj.type === 'sum') return; 
+       const val = Number(adj.amount) || 0;
+       if (adj.type === "add") final += val;
+       else final -= val;
+    });
+
+    const billData = {
+      id: uuidv4(),
+      type: "interest",
+      customerName,
+      date,
+      entries: [...intEntries],
+      finalAmount: final,
     };
 
     const newQueue = [...printQueue];
@@ -332,6 +380,15 @@ function App() {
                 </Grid>
 
                 {/* Paddy Entries */}
+                <Box sx={{ borderBottom: 1, borderColor: "divider", mb: 2 }}>
+                  <Tabs value={tabValue} onChange={(e, v) => setTabValue(v)}>
+                    <Tab label="Paddy Calculation" />
+                    <Tab label="Interest / Adjustments" />
+                  </Tabs>
+                </Box>
+
+                <div role="tabpanel" hidden={tabValue !== 0}>
+                  <Box>
                 <Box
                   sx={{
                     my: 3,
@@ -579,6 +636,226 @@ function App() {
                 >
                   Add Bill to Queue
                 </Button>
+                    </Box>
+                  </div>
+
+                  <div role="tabpanel" hidden={tabValue !== 1}>
+                    {tabValue === 1 && (
+                      <Box sx={{ p: 1 }}>
+                        <Box
+                          sx={{
+                            my: 3,
+                            p: 2,
+                            border: "1px solid #ffcc80",
+                            borderRadius: 2,
+                            bgcolor: "#fff3e0",
+                          }}
+                        >
+                          <Typography
+                            variant="subtitle2"
+                            sx={{
+                              mb: 1,
+                              color: "secondary.main",
+                              fontWeight: "bold",
+                            }}
+                          >
+                            INTEREST / ENTRIES
+                          </Typography>
+                          
+                          {/* Entries List */}
+                          {intEntries.map((entry, index) => (
+                            <React.Fragment key={entry.id}>
+                              {entry.type === 'sum' ? (
+                                <Box sx={{ my: 2, borderTop: "2px dashed #795548", display: 'flex', justifyContent: 'center', position: 'relative' }}>
+                                   <Chip label="Calculation Point (Sum)" size="small" sx={{ position: 'absolute', top: -12, bgcolor: '#fff3e0' }} />
+                                   <IconButton
+                                      size="small"
+                                      color="error"
+                                      onClick={() =>
+                                        setIntEntries(
+                                          intEntries.filter(
+                                            (e) => e.id !== entry.id
+                                          )
+                                        )
+                                      }
+                                      sx={{ position: 'absolute', right: 0, top: -20 }}
+                                    >
+                                      <RemoveCircleOutlineIcon />
+                                    </IconButton>
+                                </Box>
+                              ) : (
+                                <Grid
+                                container
+                                spacing={1}
+                                sx={{ mb: 1, alignItems: "center" }}
+                              >
+                                <Grid item xs={2}>
+                                  <Chip
+                                    label={entry.type === "add" ? "+" : "-"}
+                                    color={
+                                      entry.type === "add" ? "success" : "warning"
+                                    }
+                                    size="small"
+                                  />
+                                </Grid>
+                                <Grid item xs={4}>
+                                  <TextField
+                                    size="small"
+                                    label="Amount"
+                                    type="number"
+                                    value={entry.amount}
+                                    onChange={(e) => {
+                                      const list = [...intEntries];
+                                      list[index].amount = e.target.value;
+                                      setIntEntries(list);
+                                    }}
+                                    fullWidth
+                                  />
+                                </Grid>
+                                <Grid item xs={5}>
+                                  <TextField
+                                    size="small"
+                                    label="Note"
+                                    value={entry.note}
+                                    onChange={(e) => {
+                                      const list = [...intEntries];
+                                      list[index].note = e.target.value;
+                                      setIntEntries(list);
+                                    }}
+                                    fullWidth
+                                  />
+                                </Grid>
+                                <Grid item xs={1}>
+                                  <IconButton
+                                    size="small"
+                                    onClick={() =>
+                                      setIntEntries(
+                                        intEntries.filter(
+                                          (e) => e.id !== entry.id
+                                        )
+                                      )
+                                    }
+                                  >
+                                    <RemoveCircleOutlineIcon />
+                                  </IconButton>
+                                </Grid>
+                              </Grid>
+                              )}
+                            </React.Fragment>
+                          ))}
+
+                          <Stack direction="row" spacing={1} sx={{ mt: 1 }}>
+                            <Button
+                              variant="outlined"
+                              color="warning"
+                              size="small"
+                              onClick={() =>
+                                setIntEntries([
+                                  ...intEntries,
+                                  {
+                                    id: uuidv4(),
+                                    type: "sub",
+                                    amount: "",
+                                    note: "",
+                                  },
+                                ])
+                              }
+                            >
+                              - Deduct
+                            </Button>
+                            <Button
+                              variant="outlined"
+                              color="success"
+                              size="small"
+                              onClick={() =>
+                                setIntEntries([
+                                  ...intEntries,
+                                  {
+                                    id: uuidv4(),
+                                    type: "add",
+                                    amount: "",
+                                    note: "",
+                                  },
+                                ])
+                              }
+                            >
+                              + Add
+                            </Button>
+                            <Button
+                              variant="outlined"
+                              color="primary"
+                              size="small"
+                              onClick={() =>
+                                setIntEntries([
+                                  ...intEntries,
+                                  {
+                                    id: uuidv4(),
+                                    type: "sum",
+                                  },
+                                ])
+                              }
+                            >
+                              = Insert Sum
+                            </Button>
+                          </Stack>
+
+                          {/* Live Total */}
+                          <Paper
+                            elevation={0}
+                            sx={{
+                              mt: 4,
+                              p: 2,
+                              bgcolor: "#3e2723",
+                              color: "white",
+                              borderRadius: 2,
+                            }}
+                          >
+                            <Grid container alignItems="center">
+                              <Grid item xs={12} textAlign="right">
+                                <Typography
+                                  variant="caption"
+                                  sx={{ opacity: 0.7 }}
+                                >
+                                  FINAL AMOUNT
+                                </Typography>
+                                <Typography
+                                  variant="h4"
+                                  fontWeight="bold"
+                                  sx={{ marginLeft: "30px" }}
+                                >
+                                  ₹
+                                  {intEntries.reduce(
+                                      (acc, curr) => {
+                                        if (curr.type === 'sum') return acc;
+                                        return acc +
+                                        (curr.type === "add"
+                                          ? Number(curr.amount) || 0
+                                          : -(Number(curr.amount) || 0));
+                                      },
+                                      0
+                                    )
+                                  .toLocaleString("en-IN", {
+                                    minimumFractionDigits: 2,
+                                  })}
+                                </Typography>
+                              </Grid>
+                            </Grid>
+                          </Paper>
+
+                          <Button
+                            variant="contained"
+                            color="secondary"
+                            size="large"
+                            fullWidth
+                            sx={{ mt: 3, height: 50 }}
+                            onClick={addInterestToQueue}
+                          >
+                            Add Interest Note to Queue
+                          </Button>
+                        </Box>
+                      </Box>
+                    )}
+                  </div>
               </Paper>
             </Grid>
 
@@ -702,7 +979,11 @@ function App() {
         >
           <DialogTitle>Bill Preview</DialogTitle>
           <DialogContent dividers sx={{ bgcolor: "#f5f5f5", p: 2 }}>
-            <BillReceipt data={selectedBill} previewMode={true} />
+            {selectedBill?.type === "interest" ? (
+              <InterestReceipt data={selectedBill} previewMode={true} />
+            ) : (
+              <BillReceipt data={selectedBill} previewMode={true} />
+            )}
           </DialogContent>
         </Dialog>
 

@@ -1,6 +1,7 @@
 import React, { forwardRef } from "react";
 import { PrintContainer } from "./styles";
 import { BillReceipt } from "../../components/BillRecept";
+import { InterestReceipt } from "../../components/InterestReceipt";
 
 // Must use forwardRef to allow react-to-print to grab the DOM element
 export const PrintTemplate = forwardRef(({ queue }, ref) => {
@@ -11,7 +12,11 @@ export const PrintTemplate = forwardRef(({ queue }, ref) => {
       {slots.map((i) => (
         <React.Fragment key={i}>
           {queue[i] ? (
-            <BillReceipt data={queue[i]} />
+            queue[i].type === "interest" ? (
+              <InterestReceipt data={queue[i]} />
+            ) : (
+              <BillReceipt data={queue[i]} />
+            )
           ) : (
             // Empty placeholder
             <div style={{ width: "50%", height: "33.33%" }} />

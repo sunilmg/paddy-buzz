@@ -13,8 +13,6 @@ const formatNum = (num) => {
 export const BillReceipt = ({ data, previewMode = false }) => {
   if (!data) return null;
 
-  console.log("Rendering BillReceipt with data:", data);
-
   const {
     stockPlace,
     customerName,
@@ -119,7 +117,13 @@ export const BillReceipt = ({ data, previewMode = false }) => {
                 {/* Show raw amount */}
                 {formatNum(adj.amount)} {adj.type === "sub" ? "" : "(+)"}
               </span>
-              <span style={{ textAlign: "center", marginRight: "220px" }}>
+              <span
+                style={{
+                  textAlign: "right",
+                  flex: 1,
+                  marginLeft: "10px", 
+                }}
+              >
                 {adj.note || (adj.type === "sub" ? "Paid by Cash" : "Added")}
               </span>
             </BillRow>
