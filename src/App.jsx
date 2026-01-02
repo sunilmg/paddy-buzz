@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { useNavigate, useLocation, Routes, Route, Link } from "react-router-dom";
+import { useNavigate, useLocation, Routes, Route } from "react-router-dom";
 import {
   Container,
   Grid,
@@ -24,8 +24,8 @@ import {
   Tab,
   Snackbar,
 } from "@mui/material";
-import SaveIcon from '@mui/icons-material/Save';
-import DescriptionIcon from '@mui/icons-material/Description';
+import SaveIcon from "@mui/icons-material/Save";
+import DescriptionIcon from "@mui/icons-material/Description";
 import DeleteIcon from "@mui/icons-material/Delete";
 import AddCircleIcon from "@mui/icons-material/AddCircle";
 import PrintIcon from "@mui/icons-material/Print";
@@ -38,8 +38,8 @@ import { useReactToPrint } from "react-to-print";
 import { PrintTemplate } from "./pages/billing/PrintTemplate";
 import { BillReceipt } from "./components/BillRecept";
 import { InterestReceipt } from "./components/InterestReceipt";
-import RecordsPage from "./pages/RecordsPage"; 
-import { createRecord, updateRecord } from "./api/recordApi"; 
+import RecordsPage from "./pages/RecordsPage";
+import { createRecord, updateRecord } from "./api/recordApi";
 import { v4 as uuidv4 } from "uuid";
 import { jsPDF } from "jspdf";
 import html2canvas from "html2canvas";
@@ -86,7 +86,11 @@ const theme = createTheme({
 function MainCalculator() {
   const navigate = useNavigate();
   const location = useLocation();
-  const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
+  const [snackbar, setSnackbar] = useState({
+    open: false,
+    message: "",
+    severity: "success",
+  });
 
   // --- DnD Sensors ---
   const sensors = useSensors(
@@ -114,7 +118,7 @@ function MainCalculator() {
   const [labourCharge, setLabourCharge] = useState(12);
   const [adjustments, setAdjustments] = useState([]);
   const [stockPlace, setStockPlace] = useState([]);
-  
+
   // --- Tab State ---
   const [tabValue, setTabValue] = useState(0);
 
@@ -123,7 +127,12 @@ function MainCalculator() {
 
   // --- Queue State ---
   const [printQueue, setPrintQueue] = useState([
-    null, null, null, null, null, null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
   ]);
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedBill, setSelectedBill] = useState(null);
@@ -181,9 +190,9 @@ function MainCalculator() {
       const record = location.state.editRecord;
       // Populate fields
       setCustomerName(record.customerName);
-      setDate(new Date(record.date).toISOString().split('T')[0]);
-      
-      if (record.type === 'interest') {
+      setDate(new Date(record.date).toISOString().split("T")[0]);
+
+      if (record.type === "interest") {
         setTabValue(1);
         setIntEntries(record.data.entries || []);
       } else {
@@ -233,7 +242,7 @@ function MainCalculator() {
       customerName,
       stockPlace,
       date,
-      entries: [...paddyEntries], 
+      entries: [...paddyEntries],
       totalWeight: calcs.totalWeight,
       totalBags: calcs.totalBags,
       tareWeight: calcs.tareWeight,
@@ -259,8 +268,8 @@ function MainCalculator() {
       return;
     }
     if (intEntries.length === 0) {
-       alert("Please add at least one entry");
-       return;
+      alert("Please add at least one entry");
+      return;
     }
     const emptyIndex = printQueue.indexOf(null);
     if (emptyIndex === -1) {
@@ -269,11 +278,11 @@ function MainCalculator() {
     }
 
     let final = 0;
-    intEntries.forEach(adj => {
-       if(adj.type === 'sum') return; 
-       const val = Number(adj.amount) || 0;
-       if (adj.type === "add") final += val;
-       else final -= val;
+    intEntries.forEach((adj) => {
+      if (adj.type === "sum") return;
+      const val = Number(adj.amount) || 0;
+      if (adj.type === "add") final += val;
+      else final -= val;
     });
 
     const billData = {
@@ -335,63 +344,87 @@ function MainCalculator() {
 
   const handleSaveToDB = async () => {
     if (!customerName) {
-       setSnackbar({ open: true, message: 'Customer Name is required', severity: 'error' });
-       return;
+      setSnackbar({
+        open: true,
+        message: "Customer Name is required",
+        severity: "error",
+      });
+      return;
     }
 
     let payload = {
-        customerName,
-        date,
+      customerName,
+      date,
     };
 
     if (tabValue === 1) {
-        if(intEntries.length === 0) {
-            setSnackbar({ open: true, message: 'Add at least one entry', severity: 'error' });
-            return;
-        }
-        let final = 0;
-        intEntries.forEach(adj => {
-           if(adj.type === 'sum') return; 
-           const val = Number(adj.amount) || 0;
-           if (adj.type === "add") final += val;
-           else final -= val;
+      if (intEntries.length === 0) {
+        setSnackbar({
+          open: true,
+          message: "Add at least one entry",
+          severity: "error",
         });
+        return;
+      }
+      let final = 0;
+      intEntries.forEach((adj) => {
+        if (adj.type === "sum") return;
+        const val = Number(adj.amount) || 0;
+        if (adj.type === "add") final += val;
+        else final -= val;
+      });
 
-        payload.type = 'interest';
-        payload.finalAmount = final;
-        payload.data = { entries: intEntries };
+      payload.type = "interest";
+      payload.finalAmount = final;
+      payload.data = { entries: intEntries };
     } else {
-        if (!rate) {
-            setSnackbar({ open: true, message: 'Rate is required', severity: 'error' });
-            return;
-        }
-        payload.type = 'paddy';
-        payload.finalAmount = calcs.finalAmount;
-        payload.data = {
-            stockPlace,
-            rate,
-            tarePerBag,
-            labourCharge,
-            totalWeight: calcs.totalWeight,
-            totalBags: calcs.totalBags,
-            netWeight: calcs.netWeight,
-            entries: paddyEntries,
-            adjustments: adjustments
-        };
+      if (!rate) {
+        setSnackbar({
+          open: true,
+          message: "Rate is required",
+          severity: "error",
+        });
+        return;
+      }
+      payload.type = "paddy";
+      payload.finalAmount = calcs.finalAmount;
+      payload.data = {
+        stockPlace,
+        rate,
+        tarePerBag,
+        labourCharge,
+        totalWeight: calcs.totalWeight,
+        totalBags: calcs.totalBags,
+        netWeight: calcs.netWeight,
+        entries: paddyEntries,
+        adjustments: adjustments,
+      };
     }
 
     try {
-        if (currentRecordId) {
-            if (!confirm("Are you sure you want to update this record?")) return;
-            await updateRecord(currentRecordId, payload);
-            setSnackbar({ open: true, message: 'Record Updated Successfully!', severity: 'success' });
-        } else {
-            if (!confirm("Are you sure you want to save this new record?")) return;
-            await createRecord(payload);
-            setSnackbar({ open: true, message: 'Record Saved Successfully!', severity: 'success' });
-        }
+      if (currentRecordId) {
+        if (!confirm("Are you sure you want to update this record?")) return;
+        await updateRecord(currentRecordId, payload);
+        setSnackbar({
+          open: true,
+          message: "Record Updated Successfully!",
+          severity: "success",
+        });
+      } else {
+        if (!confirm("Are you sure you want to save this new record?")) return;
+        await createRecord(payload);
+        setSnackbar({
+          open: true,
+          message: "Record Saved Successfully!",
+          severity: "success",
+        });
+      }
     } catch (error) {
-        setSnackbar({ open: true, message: 'Error saving record: ' + error.message, severity: 'error' });
+      setSnackbar({
+        open: true,
+        message: "Error saving record: " + error.message,
+        severity: "error",
+      });
     }
   };
 
@@ -460,741 +493,770 @@ function MainCalculator() {
 
   return (
     <Box sx={{ bgcolor: "background.default", minHeight: "100vh", pb: 8 }}>
-        <Navbar />
+      <Navbar />
 
-        <Container maxWidth="xl">
-          <Grid container spacing={3}>
-            {/* LEFT: INPUT */}
-            <Grid item xs={12} lg={7}>
-              <Paper sx={{ p: 3 }}>
-                
-                <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
-                    <Typography variant="h6" color="primary" fontWeight="bold">Bill Details</Typography>
-                    <Button
-                        variant="outlined"
-                        color="error"
-                        size="small"
-                        onClick={handleClearForm}
-                        startIcon={<RestartAltIcon />}
-                    >
-                        Reset Form
-                    </Button>
-                </Box>
-
-                <Grid container spacing={2}>
-                  <Grid item xs={12} sm={18}>
-                    <TextField
-                      fullWidth
-                      label="Stock Place"
-                      variant="outlined"
-                      value={stockPlace}
-                      onChange={(e) => setStockPlace(e.target.value)}
-                    />
-                  </Grid>
-                  <Grid item xs={12} sm={8}>
-                    <TextField
-                      fullWidth
-                      label="Customer Name"
-                      variant="outlined"
-                      value={customerName}
-                      onChange={(e) => setCustomerName(e.target.value)}
-                    />
-                  </Grid>
-                  <Grid item xs={12} sm={4}>
-                    <TextField
-                      fullWidth
-                      type="date"
-                      label="Date"
-                      InputLabelProps={{ shrink: true }}
-                      value={date}
-                      onChange={(e) => setDate(e.target.value)}
-                    />
-                  </Grid>
-                </Grid>
-
-                {/* Paddy Entries */}
-                <Box sx={{ borderBottom: 1, borderColor: "divider", mb: 2 }}>
-                  <Tabs value={tabValue} onChange={(e, v) => setTabValue(v)}>
-                    <Tab label="Paddy Calculation" />
-                    <Tab label="Interest / Adjustments" />
-                  </Tabs>
-                </Box>
-
-                <div role="tabpanel" hidden={tabValue !== 0}>
-                  <Box>
-                <Box
-                  sx={{
-                    my: 3,
-                    p: 2,
-                    border: "1px solid #c8e6c9",
-                    borderRadius: 2,
-                    bgcolor: "#f1f8e9",
-                  }}
+      <Container maxWidth="xl">
+        <Grid container spacing={3}>
+          {/* LEFT: INPUT */}
+          <Grid item xs={12} lg={7}>
+            <Paper sx={{ p: 3 }}>
+              <Box
+                display="flex"
+                justifyContent="space-between"
+                alignItems="center"
+                mb={2}
+              >
+                <Typography variant="h6" color="primary" fontWeight="bold">
+                  Bill Details
+                </Typography>
+                <Button
+                  variant="outlined"
+                  color="error"
+                  size="small"
+                  onClick={handleClearForm}
+                  startIcon={<RestartAltIcon />}
                 >
-                  <Typography
-                    variant="subtitle2"
-                    sx={{ mb: 1, color: "primary.main", fontWeight: "bold" }}
-                  >
-                    PADDY ENTRIES
-                  </Typography>
-                  {paddyEntries.map((entry, index) => (
-                    <Grid container spacing={2} key={entry.id} sx={{ mb: 1.5 }}>
-                      <Grid item xs={5}>
-                        <TextField
-                          fullWidth
-                          size="small"
-                          label={`Weight (kg)`}
-                          type="number"
-                          value={entry.weight}
-                          onChange={(e) => {
-                            const list = [...paddyEntries];
-                            list[index].weight = e.target.value;
-                            setPaddyEntries(list);
-                          }}
-                        />
-                      </Grid>
-                      <Grid item xs={5}>
-                        <TextField
-                          fullWidth
-                          size="small"
-                          label="Bags"
-                          type="number"
-                          value={entry.bags}
-                          onChange={(e) => {
-                            const list = [...paddyEntries];
-                            list[index].bags = e.target.value;
-                            setPaddyEntries(list);
-                          }}
-                        />
-                      </Grid>
-                      <Grid item xs={2} display="flex" alignItems="center">
-                        <IconButton
-                          color="error"
-                          onClick={() => {
-                            if (paddyEntries.length > 1)
-                              setPaddyEntries(
-                                paddyEntries.filter((p) => p.id !== entry.id)
-                              );
-                          }}
-                          disabled={paddyEntries.length === 1}
-                        >
-                          <DeleteIcon />
-                        </IconButton>
-                      </Grid>
-                    </Grid>
-                  ))}
-                  <Button
-                    startIcon={<AddCircleIcon />}
-                    size="small"
-                    variant="text"
-                    onClick={() =>
-                      setPaddyEntries([
-                        ...paddyEntries,
-                        { id: uuidv4(), weight: "", bags: "" },
-                      ])
-                    }
-                  >
-                    Add Another Row
-                  </Button>
-                </Box>
+                  Reset Form
+                </Button>
+              </Box>
 
-                {/* Rates */}
-                <Grid container spacing={2} sx={{ mb: 3 }}>
-                  <Grid item xs={4}>
-                    <TextField
-                      fullWidth
-                      label="Tare/Bag (kg)"
-                      type="number"
-                      value={tarePerBag}
-                      onChange={(e) => setTarePerBag(e.target.value)}
-                    />
-                  </Grid>
-                  <Grid item xs={4}>
-                    <TextField
-                      fullWidth
-                      label="Rate / Quintal"
-                      type="number"
-                      required
-                      sx={{ input: { fontWeight: "bold" } }}
-                      value={rate}
-                      onChange={(e) => setRate(e.target.value)}
-                    />
-                  </Grid>
-                  <Grid item xs={4}>
-                    <TextField
-                      fullWidth
-                      label="Labour Charge"
-                      type="number"
-                      value={labourCharge}
-                      onChange={(e) => setLabourCharge(e.target.value)}
-                    />
-                  </Grid>
+              <Grid container spacing={2}>
+                <Grid item xs={12} sm={18}>
+                  <TextField
+                    fullWidth
+                    label="Stock Place"
+                    variant="outlined"
+                    value={stockPlace}
+                    onChange={(e) => setStockPlace(e.target.value)}
+                  />
                 </Grid>
+                <Grid item xs={12} sm={8}>
+                  <TextField
+                    fullWidth
+                    label="Customer Name"
+                    variant="outlined"
+                    value={customerName}
+                    onChange={(e) => setCustomerName(e.target.value)}
+                  />
+                </Grid>
+                <Grid item xs={12} sm={4}>
+                  <TextField
+                    fullWidth
+                    type="date"
+                    label="Date"
+                    InputLabelProps={{ shrink: true }}
+                    value={date}
+                    onChange={(e) => setDate(e.target.value)}
+                  />
+                </Grid>
+              </Grid>
 
-                {/* Adjustments */}
-                <Divider sx={{ mb: 2 }} textAlign="left">
-                  <Chip label="Adjustments / Cash" />
-                </Divider>
-                {adjustments.map((adj, index) => (
-                  <Grid
-                    container
-                    spacing={1}
-                    key={adj.id}
-                    sx={{ mb: 1, alignItems: "center" }}
+              {/* Paddy Entries */}
+              <Box sx={{ borderBottom: 1, borderColor: "divider", mb: 2 }}>
+                <Tabs value={tabValue} onChange={(e, v) => setTabValue(v)}>
+                  <Tab label="Paddy Calculation" />
+                  <Tab label="Interest / Adjustments" />
+                </Tabs>
+              </Box>
+
+              <div role="tabpanel" hidden={tabValue !== 0}>
+                <Box>
+                  <Box
+                    sx={{
+                      my: 3,
+                      p: 2,
+                      border: "1px solid #c8e6c9",
+                      borderRadius: 2,
+                      bgcolor: "#f1f8e9",
+                    }}
                   >
-                    <Grid item xs={2}>
-                      <Chip
-                        label={adj.type === "add" ? "+" : "-"}
-                        color={adj.type === "add" ? "success" : "warning"}
-                        size="small"
+                    <Typography
+                      variant="subtitle2"
+                      sx={{ mb: 1, color: "primary.main", fontWeight: "bold" }}
+                    >
+                      PADDY ENTRIES
+                    </Typography>
+                    {paddyEntries.map((entry, index) => (
+                      <Grid
+                        container
+                        spacing={2}
+                        key={entry.id}
+                        sx={{ mb: 1.5 }}
+                      >
+                        <Grid item xs={5}>
+                          <TextField
+                            fullWidth
+                            size="small"
+                            label={`Weight (kg)`}
+                            type="number"
+                            value={entry.weight}
+                            onChange={(e) => {
+                              const list = [...paddyEntries];
+                              list[index].weight = e.target.value;
+                              setPaddyEntries(list);
+                            }}
+                          />
+                        </Grid>
+                        <Grid item xs={5}>
+                          <TextField
+                            fullWidth
+                            size="small"
+                            label="Bags"
+                            type="number"
+                            value={entry.bags}
+                            onChange={(e) => {
+                              const list = [...paddyEntries];
+                              list[index].bags = e.target.value;
+                              setPaddyEntries(list);
+                            }}
+                          />
+                        </Grid>
+                        <Grid item xs={2} display="flex" alignItems="center">
+                          <IconButton
+                            color="error"
+                            onClick={() => {
+                              if (paddyEntries.length > 1)
+                                setPaddyEntries(
+                                  paddyEntries.filter((p) => p.id !== entry.id)
+                                );
+                            }}
+                            disabled={paddyEntries.length === 1}
+                          >
+                            <DeleteIcon />
+                          </IconButton>
+                        </Grid>
+                      </Grid>
+                    ))}
+                    <Button
+                      startIcon={<AddCircleIcon />}
+                      size="small"
+                      variant="text"
+                      onClick={() =>
+                        setPaddyEntries([
+                          ...paddyEntries,
+                          { id: uuidv4(), weight: "", bags: "" },
+                        ])
+                      }
+                    >
+                      Add Another Row
+                    </Button>
+                  </Box>
+
+                  {/* Rates */}
+                  <Grid container spacing={2} sx={{ mb: 3 }}>
+                    <Grid item xs={4}>
+                      <TextField
+                        fullWidth
+                        label="Tare/Bag (kg)"
+                        type="number"
+                        value={tarePerBag}
+                        onChange={(e) => setTarePerBag(e.target.value)}
                       />
                     </Grid>
                     <Grid item xs={4}>
                       <TextField
                         fullWidth
-                        size="small"
-                        label="Amount"
+                        label="Rate / Quintal"
                         type="number"
-                        value={adj.amount}
-                        onChange={(e) => {
-                          const list = [...adjustments];
-                          list[index].amount = e.target.value;
-                          setAdjustments(list);
-                        }}
+                        required
+                        sx={{ input: { fontWeight: "bold" } }}
+                        value={rate}
+                        onChange={(e) => setRate(e.target.value)}
                       />
                     </Grid>
-                    <Grid item xs={5}>
+                    <Grid item xs={4}>
                       <TextField
                         fullWidth
-                        size="small"
-                        label="Note (e.g. Paid Cash)"
-                        value={adj.note}
-                        onChange={(e) => {
-                          const list = [...adjustments];
-                          list[index].note = e.target.value;
-                          setAdjustments(list);
-                        }}
+                        label="Labour Charge"
+                        type="number"
+                        value={labourCharge}
+                        onChange={(e) => setLabourCharge(e.target.value)}
                       />
                     </Grid>
-                    <Grid item xs={1}>
-                      <IconButton
-                        size="small"
-                        onClick={() =>
-                          setAdjustments(
-                            adjustments.filter((a) => a.id !== adj.id)
-                          )
-                        }
-                      >
-                        <RemoveCircleOutlineIcon />
-                      </IconButton>
-                    </Grid>
                   </Grid>
-                ))}
 
-                <Stack direction="row" spacing={1} sx={{ mt: 1 }}>
-                  <Button
-                    variant="outlined"
-                    color="warning"
-                    size="small"
-                    onClick={() =>
-                      setAdjustments([
-                        ...adjustments,
-                        { id: uuidv4(), type: "sub", amount: "", note: "" },
-                      ])
-                    }
-                  >
-                    - Deduct Cash
-                  </Button>
-                  <Button
-                    variant="outlined"
-                    color="success"
-                    size="small"
-                    onClick={() =>
-                      setAdjustments([
-                        ...adjustments,
-                        { id: uuidv4(), type: "add", amount: "", note: "" },
-                      ])
-                    }
-                  >
-                    + Add Charge
-                  </Button>
-                </Stack>
-
-                {/* Live Totals */}
-                <Paper
-                  elevation={0}
-                  sx={{
-                    mt: 4,
-                    p: 2,
-                    bgcolor: "#263238",
-                    color: "white",
-                    borderRadius: 2,
-                  }}
-                >
-                  <Grid container alignItems="center">
-                    {/* grid 1 */}
-                    <Grid item xs={6}>
-                      <Typography variant="body2" sx={{ opacity: 0.7 }}>
-                        TOTAL WEIGHT: {calcs.totalWeight} kg
-                      </Typography>
-                      <Typography variant="body2" sx={{ opacity: 0.7 }}>
-                        TOTAL BAGS: {calcs.totalBags}
-                      </Typography>
-                    </Grid>
-                    {/* grid 2 */}
-                    <Grid item xs={6} textAlign="right">
-                      <Typography variant="caption" sx={{ opacity: 0.7 }}>
-                        FINAL PAYABLE
-                      </Typography>
-                      <Typography
-                        variant="h4"
-                        fontWeight="bold"
-                        sx={{ marginLeft: "30px" }}
-                      >
-                        ₹
-                        {calcs.finalAmount.toLocaleString("en-IN", {
-                          minimumFractionDigits: 2,
-                        })}
-                      </Typography>
-                    </Grid>
-                  </Grid>
-                </Paper>
-
-                <Stack direction="row" spacing={2} sx={{ mt: 3 }}>
-                    <Button
-                        variant="contained"
-                        size="large"
-                        fullWidth
-                        onClick={addToQueue}
-                        sx={{ flex: 1, height: 50 }}
+                  {/* Adjustments */}
+                  <Divider sx={{ mb: 2 }} textAlign="left">
+                    <Chip label="Adjustments / Cash" />
+                  </Divider>
+                  {adjustments.map((adj, index) => (
+                    <Grid
+                      container
+                      spacing={1}
+                      key={adj.id}
+                      sx={{ mb: 1, alignItems: "center" }}
                     >
-                        Add to Queue
-                    </Button>
-                    <Button
-                        variant="contained"
-                        color="success"
-                        size="large"
-                        startIcon={<SaveIcon />}
-                        onClick={handleSaveToDB}
-                        sx={{ flex: 1, height: 50, bgcolor: "#2e7d32" }}
-                    >
-                        {currentRecordId ? "Update Record" : "Save Record"}
-                    </Button>
-                </Stack>
-                    </Box>
-                  </div>
-
-                  <div role="tabpanel" hidden={tabValue !== 1}>
-                    {tabValue === 1 && (
-                      <Box sx={{ p: 1 }}>
-                        <Box
-                          sx={{
-                            my: 3,
-                            p: 2,
-                            border: "1px solid #ffcc80",
-                            borderRadius: 2,
-                            bgcolor: "#fff3e0",
+                      <Grid item xs={2}>
+                        <Chip
+                          label={adj.type === "add" ? "+" : "-"}
+                          color={adj.type === "add" ? "success" : "warning"}
+                          size="small"
+                        />
+                      </Grid>
+                      <Grid item xs={4}>
+                        <TextField
+                          fullWidth
+                          size="small"
+                          label="Amount"
+                          type="number"
+                          value={adj.amount}
+                          onChange={(e) => {
+                            const list = [...adjustments];
+                            list[index].amount = e.target.value;
+                            setAdjustments(list);
                           }}
+                        />
+                      </Grid>
+                      <Grid item xs={5}>
+                        <TextField
+                          fullWidth
+                          size="small"
+                          label="Note (e.g. Paid Cash)"
+                          value={adj.note}
+                          onChange={(e) => {
+                            const list = [...adjustments];
+                            list[index].note = e.target.value;
+                            setAdjustments(list);
+                          }}
+                        />
+                      </Grid>
+                      <Grid item xs={1}>
+                        <IconButton
+                          size="small"
+                          onClick={() =>
+                            setAdjustments(
+                              adjustments.filter((a) => a.id !== adj.id)
+                            )
+                          }
                         >
-                          <Typography
-                            variant="subtitle2"
-                            sx={{
-                              mb: 1,
-                              color: "secondary.main",
-                              fontWeight: "bold",
-                            }}
-                          >
-                            INTEREST / ENTRIES
-                          </Typography>
-                          
-                          {/* Entries List */}
-                          {intEntries.map((entry, index) => (
-                            <React.Fragment key={entry.id}>
-                              {entry.type === 'sum' ? (
-                                <Box sx={{ my: 2, borderTop: "2px dashed #795548", display: 'flex', justifyContent: 'center', position: 'relative' }}>
-                                   <Chip label="Calculation Point (Sum)" size="small" sx={{ position: 'absolute', top: -12, bgcolor: '#fff3e0' }} />
-                                   <IconButton
-                                      size="small"
-                                      color="error"
-                                      onClick={() =>
-                                        setIntEntries(
-                                          intEntries.filter(
-                                            (e) => e.id !== entry.id
-                                          )
-                                        )
-                                      }
-                                      sx={{ position: 'absolute', right: 0, top: -20 }}
-                                    >
-                                      <RemoveCircleOutlineIcon />
-                                    </IconButton>
-                                </Box>
-                              ) : (
-                                <Grid
-                                container
-                                spacing={1}
-                                sx={{ mb: 1, alignItems: "center" }}
-                              >
-                                <Grid item xs={2}>
-                                  <Chip
-                                    label={entry.type === "add" ? "+" : "-"}
-                                    color={
-                                      entry.type === "add" ? "success" : "warning"
-                                    }
-                                    size="small"
-                                  />
-                                </Grid>
-                                <Grid item xs={4}>
-                                  <TextField
-                                    size="small"
-                                    label="Amount"
-                                    type="number"
-                                    value={entry.amount}
-                                    onChange={(e) => {
-                                      const list = [...intEntries];
-                                      list[index].amount = e.target.value;
-                                      setIntEntries(list);
-                                    }}
-                                    fullWidth
-                                  />
-                                </Grid>
-                                <Grid item xs={5}>
-                                  <TextField
-                                    size="small"
-                                    label="Note"
-                                    value={entry.note}
-                                    onChange={(e) => {
-                                      const list = [...intEntries];
-                                      list[index].note = e.target.value;
-                                      setIntEntries(list);
-                                    }}
-                                    fullWidth
-                                  />
-                                </Grid>
-                                <Grid item xs={1}>
-                                  <IconButton
-                                    size="small"
-                                    onClick={() =>
-                                      setIntEntries(
-                                        intEntries.filter(
-                                          (e) => e.id !== entry.id
-                                        )
-                                      )
-                                    }
-                                  >
-                                    <RemoveCircleOutlineIcon />
-                                  </IconButton>
-                                </Grid>
-                              </Grid>
-                              )}
-                            </React.Fragment>
-                          ))}
+                          <RemoveCircleOutlineIcon />
+                        </IconButton>
+                      </Grid>
+                    </Grid>
+                  ))}
 
-                          <Stack direction="row" spacing={1} sx={{ mt: 1 }}>
-                            <Button
-                              variant="outlined"
-                              color="warning"
-                              size="small"
-                              onClick={() =>
-                                setIntEntries([
-                                  ...intEntries,
-                                  {
-                                    id: uuidv4(),
-                                    type: "sub",
-                                    amount: "",
-                                    note: "",
-                                  },
-                                ])
-                              }
-                            >
-                              - Deduct
-                            </Button>
-                            <Button
-                              variant="outlined"
-                              color="success"
-                              size="small"
-                              onClick={() =>
-                                setIntEntries([
-                                  ...intEntries,
-                                  {
-                                    id: uuidv4(),
-                                    type: "add",
-                                    amount: "",
-                                    note: "",
-                                  },
-                                ])
-                              }
-                            >
-                              + Add
-                            </Button>
-                            <Button
-                              variant="outlined"
-                              color="primary"
-                              size="small"
-                              onClick={() =>
-                                setIntEntries([
-                                  ...intEntries,
-                                  {
-                                    id: uuidv4(),
-                                    type: "sum",
-                                  },
-                                ])
-                              }
-                            >
-                              = Insert Sum
-                            </Button>
-                          </Stack>
+                  <Stack direction="row" spacing={1} sx={{ mt: 1 }}>
+                    <Button
+                      variant="outlined"
+                      color="warning"
+                      size="small"
+                      onClick={() =>
+                        setAdjustments([
+                          ...adjustments,
+                          { id: uuidv4(), type: "sub", amount: "", note: "" },
+                        ])
+                      }
+                    >
+                      - Deduct Cash
+                    </Button>
+                    <Button
+                      variant="outlined"
+                      color="success"
+                      size="small"
+                      onClick={() =>
+                        setAdjustments([
+                          ...adjustments,
+                          { id: uuidv4(), type: "add", amount: "", note: "" },
+                        ])
+                      }
+                    >
+                      + Add Charge
+                    </Button>
+                  </Stack>
 
-                          {/* Live Total */}
-                          <Paper
-                            elevation={0}
-                            sx={{
-                              mt: 4,
-                              p: 2,
-                              bgcolor: "#3e2723",
-                              color: "white",
-                              borderRadius: 2,
-                            }}
-                          >
-                            <Grid container alignItems="center">
-                              <Grid item xs={12} textAlign="right">
-                                <Typography
-                                  variant="caption"
-                                  sx={{ opacity: 0.7 }}
-                                >
-                                  FINAL AMOUNT
-                                </Typography>
-                                <Typography
-                                  variant="h4"
-                                  fontWeight="bold"
-                                  sx={{ marginLeft: "30px" }}
-                                >
-                                  ₹
-                                  {intEntries.reduce(
-                                      (acc, curr) => {
-                                        if (curr.type === 'sum') return acc;
-                                        return acc +
-                                        (curr.type === "add"
-                                          ? Number(curr.amount) || 0
-                                          : -(Number(curr.amount) || 0));
-                                      },
-                                      0
-                                    )
-                                  .toLocaleString("en-IN", {
-                                    minimumFractionDigits: 2,
-                                  })}
-                                </Typography>
-                              </Grid>
-                            </Grid>
-                          </Paper>
-
-                          <Stack direction="row" spacing={2} sx={{ mt: 3 }}>
-                            <Button
-                                variant="contained"
-                                color="secondary"
-                                size="large"
-                                fullWidth
-                                onClick={addInterestToQueue}
-                                sx={{ flex: 1, height: 50 }}
-                            >
-                                Add to Queue
-                            </Button>
-                            <Button
-                                variant="contained"
-                                color="success"
-                                size="large"
-                                startIcon={<SaveIcon />}
-                                onClick={handleSaveToDB}
-                                sx={{ flex: 1, height: 50, bgcolor: "#2e7d32" }}
-                            >
-                                {currentRecordId ? "Update Interest" : "Save Interest"}
-                            </Button>
-                          </Stack>
-                        </Box>
-                      </Box>
-                    )}
-                  </div>
-              </Paper>
-            </Grid>
-
-            {/* RIGHT: QUEUE */}
-            <Grid item xs={12} lg={5}>
-              <Paper sx={{ p: 3, height: "100%", bgcolor: "#fff" }}>
-                <Box
-                  sx={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    mb: 2,
-                  }}
-                >
-                  <Typography variant="h6">Print Queue (A4)</Typography>
-                  <Button
-                    size="small"
-                    color="error"
-                    onClick={handleClearQueue}
-                    startIcon={<ClearAllIcon />}
+                  {/* Live Totals */}
+                  <Paper
+                    elevation={0}
+                    sx={{
+                      mt: 4,
+                      p: 2,
+                      bgcolor: "#263238",
+                      color: "white",
+                      borderRadius: 2,
+                    }}
                   >
-                    Clear All
-                  </Button>
+                    <Grid container alignItems="center">
+                      {/* grid 1 */}
+                      <Grid item xs={6}>
+                        <Typography variant="body2" sx={{ opacity: 0.7 }}>
+                          TOTAL WEIGHT: {calcs.totalWeight} kg
+                        </Typography>
+                        <Typography variant="body2" sx={{ opacity: 0.7 }}>
+                          TOTAL BAGS: {calcs.totalBags}
+                        </Typography>
+                      </Grid>
+                      {/* grid 2 */}
+                      <Grid item xs={6} textAlign="right">
+                        <Typography variant="caption" sx={{ opacity: 0.7 }}>
+                          FINAL PAYABLE
+                        </Typography>
+                        <Typography
+                          variant="h4"
+                          fontWeight="bold"
+                          sx={{ marginLeft: "30px" }}
+                        >
+                          ₹
+                          {calcs.finalAmount.toLocaleString("en-IN", {
+                            minimumFractionDigits: 2,
+                          })}
+                        </Typography>
+                      </Grid>
+                    </Grid>
+                  </Paper>
+
+                  <Stack direction="row" spacing={2} sx={{ mt: 3 }}>
+                    <Button
+                      variant="contained"
+                      size="large"
+                      fullWidth
+                      onClick={addToQueue}
+                      sx={{ flex: 1, height: 50 }}
+                    >
+                      Add to Queue
+                    </Button>
+                    <Button
+                      variant="contained"
+                      color="success"
+                      size="large"
+                      startIcon={<SaveIcon />}
+                      onClick={handleSaveToDB}
+                      sx={{ flex: 1, height: 50, bgcolor: "#2e7d32" }}
+                    >
+                      {currentRecordId ? "Update Record" : "Save Record"}
+                    </Button>
+                  </Stack>
                 </Box>
+              </div>
 
-                {/* Visualizer Grid */}
-                <DndContext
-                  sensors={sensors}
-                  collisionDetection={closestCenter}
-                  onDragEnd={handleDragEnd}
-                >
-                  <SortableContext
-                    items={printQueue.map(
-                      (item, index) => item?.id ?? `empty-${index}`
-                    )}
-                    strategy={rectSortingStrategy}
-                  >
+              <div role="tabpanel" hidden={tabValue !== 1}>
+                {tabValue === 1 && (
+                  <Box sx={{ p: 1 }}>
                     <Box
                       sx={{
-                        display: "grid",
-                        gridTemplateColumns: "1fr 1fr", // Still 2 columns wide
-                        gridTemplateRows: "repeat(3, 1fr)", // 3 rows tall for 6 items
-                        gap: 2,
-                        aspectRatio: "1 / 1.414", // Maintain A4 aspect ratio
-                        bgcolor: "#eeeeee",
+                        my: 3,
                         p: 2,
+                        border: "1px solid #ffcc80",
                         borderRadius: 2,
+                        bgcolor: "#fff3e0",
                       }}
                     >
-                      {printQueue.map((item, index) => (
-                        <SortableItem
-                          key={item?.id ?? `empty-${index}`}
-                          id={item?.id ?? `empty-${index}`}
-                        >
-                          <Card
-                            onClick={() => {
-                              if (item) {
-                                setSelectedBill(item);
-                                setModalOpen(true);
-                              }
-                            }}
-                            sx={{
-                              height: "100%", // Fill SortableItem
-                              cursor: item ? "pointer" : "default",
-                              bgcolor: item ? "#fff" : "#e0e0e0",
-                              display: "flex",
-                              flexDirection: "column",
-                              justifyContent: "center",
-                              alignItems: "center",
-                              position: "relative",
-                              border: item ? "2px solid #4caf50" : "none",
-                            }}
-                          >
-                            {item ? (
-                              <>
-                                <Box sx={{ textAlign: "center" }}>
-                                  <Typography
-                                    variant="subtitle2"
-                                    fontWeight="bold"
-                                  >
-                                    {item.customerName}
-                                  </Typography>
-                                  <Typography variant="body2" color="primary">
-                                    ₹{Math.round(item.finalAmount)}
-                                  </Typography>
-                                </Box>
-                                <Box
-                                  sx={{
-                                    position: "absolute",
-                                    top: 0,
-                                    right: 0,
-                                  }}
-                                >
-                                  <IconButton
-                                    size="small"
-                                    color="primary"
-                                    onClick={(e) => handleEditQueueItem(e, item)}
-                                  >
-                                    <EditIcon fontSize="small" />
-                                  </IconButton>
-                                  <IconButton
-                                    size="small"
-                                    color="error"
-                                    onClick={(e) => removeFromQueue(e, index)}
-                                  >
-                                    <RemoveCircleOutlineIcon fontSize="small" />
-                                  </IconButton>
-                                </Box>
-                              </>
-                            ) : (
-                              <Typography
-                                variant="caption"
-                                color="text.disabled"
+                      <Typography
+                        variant="subtitle2"
+                        sx={{
+                          mb: 1,
+                          color: "secondary.main",
+                          fontWeight: "bold",
+                        }}
+                      >
+                        INTEREST / ENTRIES
+                      </Typography>
+
+                      {/* Entries List */}
+                      {intEntries.map((entry, index) => (
+                        <React.Fragment key={entry.id}>
+                          {entry.type === "sum" ? (
+                            <Box
+                              sx={{
+                                my: 2,
+                                borderTop: "2px dashed #795548",
+                                display: "flex",
+                                justifyContent: "center",
+                                position: "relative",
+                              }}
+                            >
+                              <Chip
+                                label="Calculation Point (Sum)"
+                                size="small"
+                                sx={{
+                                  position: "absolute",
+                                  top: -12,
+                                  bgcolor: "#fff3e0",
+                                }}
+                              />
+                              <IconButton
+                                size="small"
+                                color="error"
+                                onClick={() =>
+                                  setIntEntries(
+                                    intEntries.filter((e) => e.id !== entry.id)
+                                  )
+                                }
+                                sx={{
+                                  position: "absolute",
+                                  right: 0,
+                                  top: -20,
+                                }}
                               >
-                                Empty
-                              </Typography>
-                            )}
-                          </Card>
-                        </SortableItem>
+                                <RemoveCircleOutlineIcon />
+                              </IconButton>
+                            </Box>
+                          ) : (
+                            <Grid
+                              container
+                              spacing={1}
+                              sx={{ mb: 1, alignItems: "center" }}
+                            >
+                              <Grid item xs={2}>
+                                <Chip
+                                  label={entry.type === "add" ? "+" : "-"}
+                                  color={
+                                    entry.type === "add" ? "success" : "warning"
+                                  }
+                                  size="small"
+                                />
+                              </Grid>
+                              <Grid item xs={4}>
+                                <TextField
+                                  size="small"
+                                  label="Amount"
+                                  type="number"
+                                  value={entry.amount}
+                                  onChange={(e) => {
+                                    const list = [...intEntries];
+                                    list[index].amount = e.target.value;
+                                    setIntEntries(list);
+                                  }}
+                                  fullWidth
+                                />
+                              </Grid>
+                              <Grid item xs={5}>
+                                <TextField
+                                  size="small"
+                                  label="Note"
+                                  value={entry.note}
+                                  onChange={(e) => {
+                                    const list = [...intEntries];
+                                    list[index].note = e.target.value;
+                                    setIntEntries(list);
+                                  }}
+                                  fullWidth
+                                />
+                              </Grid>
+                              <Grid item xs={1}>
+                                <IconButton
+                                  size="small"
+                                  onClick={() =>
+                                    setIntEntries(
+                                      intEntries.filter(
+                                        (e) => e.id !== entry.id
+                                      )
+                                    )
+                                  }
+                                >
+                                  <RemoveCircleOutlineIcon />
+                                </IconButton>
+                              </Grid>
+                            </Grid>
+                          )}
+                        </React.Fragment>
                       ))}
+
+                      <Stack direction="row" spacing={1} sx={{ mt: 1 }}>
+                        <Button
+                          variant="outlined"
+                          color="warning"
+                          size="small"
+                          onClick={() =>
+                            setIntEntries([
+                              ...intEntries,
+                              {
+                                id: uuidv4(),
+                                type: "sub",
+                                amount: "",
+                                note: "",
+                              },
+                            ])
+                          }
+                        >
+                          - Deduct
+                        </Button>
+                        <Button
+                          variant="outlined"
+                          color="success"
+                          size="small"
+                          onClick={() =>
+                            setIntEntries([
+                              ...intEntries,
+                              {
+                                id: uuidv4(),
+                                type: "add",
+                                amount: "",
+                                note: "",
+                              },
+                            ])
+                          }
+                        >
+                          + Add
+                        </Button>
+                        <Button
+                          variant="outlined"
+                          color="primary"
+                          size="small"
+                          onClick={() =>
+                            setIntEntries([
+                              ...intEntries,
+                              {
+                                id: uuidv4(),
+                                type: "sum",
+                              },
+                            ])
+                          }
+                        >
+                          = Insert Sum
+                        </Button>
+                      </Stack>
+
+                      {/* Live Total */}
+                      <Paper
+                        elevation={0}
+                        sx={{
+                          mt: 4,
+                          p: 2,
+                          bgcolor: "#3e2723",
+                          color: "white",
+                          borderRadius: 2,
+                        }}
+                      >
+                        <Grid container alignItems="center">
+                          <Grid item xs={12} textAlign="right">
+                            <Typography variant="caption" sx={{ opacity: 0.7 }}>
+                              FINAL AMOUNT
+                            </Typography>
+                            <Typography
+                              variant="h4"
+                              fontWeight="bold"
+                              sx={{ marginLeft: "30px" }}
+                            >
+                              ₹
+                              {intEntries
+                                .reduce((acc, curr) => {
+                                  if (curr.type === "sum") return acc;
+                                  return (
+                                    acc +
+                                    (curr.type === "add"
+                                      ? Number(curr.amount) || 0
+                                      : -(Number(curr.amount) || 0))
+                                  );
+                                }, 0)
+                                .toLocaleString("en-IN", {
+                                  minimumFractionDigits: 2,
+                                })}
+                            </Typography>
+                          </Grid>
+                        </Grid>
+                      </Paper>
+
+                      <Stack direction="row" spacing={2} sx={{ mt: 3 }}>
+                        <Button
+                          variant="contained"
+                          color="secondary"
+                          size="large"
+                          fullWidth
+                          onClick={addInterestToQueue}
+                          sx={{ flex: 1, height: 50 }}
+                        >
+                          Add to Queue
+                        </Button>
+                        <Button
+                          variant="contained"
+                          color="success"
+                          size="large"
+                          startIcon={<SaveIcon />}
+                          onClick={handleSaveToDB}
+                          sx={{ flex: 1, height: 50, bgcolor: "#2e7d32" }}
+                        >
+                          {currentRecordId
+                            ? "Update Interest"
+                            : "Save Interest"}
+                        </Button>
+                      </Stack>
                     </Box>
-                  </SortableContext>
-                </DndContext>
-
-                <Stack direction="row" spacing={2} sx={{ mt: 3 }}>
-                  <Button
-                    variant="contained"
-                    fullWidth
-                    size="large"
-                    startIcon={<PrintIcon />}
-                    onClick={handlePrint}
-                  >
-                    Print
-                  </Button>
-                  <Button
-                    variant="outlined"
-                    fullWidth
-                    size="large"
-                    startIcon={<PictureAsPdfIcon />}
-                    onClick={handleSavePdf}
-                  >
-                    Save PDF
-                  </Button>
-                </Stack>
-
-                <Alert severity="info" sx={{ mt: 2, fontSize: "0.8rem" }}>
-                  Print works best on PC. For Mobile, use "Save PDF".
-                </Alert>
-              </Paper>
-            </Grid>
+                  </Box>
+                )}
+              </div>
+            </Paper>
           </Grid>
-        </Container>
 
-        {/* Modal Preview */}
-        <Dialog
-          open={modalOpen}
-          onClose={() => setModalOpen(false)}
-          maxWidth="sm"
-          fullWidth
+          {/* RIGHT: QUEUE */}
+          <Grid item xs={12} lg={5}>
+            <Paper sx={{ p: 3, height: "100%", bgcolor: "#fff" }}>
+              <Box
+                sx={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  mb: 2,
+                }}
+              >
+                <Typography variant="h6">Print Queue (A4)</Typography>
+                <Button
+                  size="small"
+                  color="error"
+                  onClick={handleClearQueue}
+                  startIcon={<ClearAllIcon />}
+                >
+                  Clear All
+                </Button>
+              </Box>
+
+              {/* Visualizer Grid */}
+              <DndContext
+                sensors={sensors}
+                collisionDetection={closestCenter}
+                onDragEnd={handleDragEnd}
+              >
+                <SortableContext
+                  items={printQueue.map(
+                    (item, index) => item?.id ?? `empty-${index}`
+                  )}
+                  strategy={rectSortingStrategy}
+                >
+                  <Box
+                    sx={{
+                      display: "grid",
+                      gridTemplateColumns: "1fr 1fr", // Still 2 columns wide
+                      gridTemplateRows: "repeat(3, 1fr)", // 3 rows tall for 6 items
+                      gap: 2,
+                      aspectRatio: "1 / 1.414", // Maintain A4 aspect ratio
+                      bgcolor: "#eeeeee",
+                      p: 2,
+                      borderRadius: 2,
+                    }}
+                  >
+                    {printQueue.map((item, index) => (
+                      <SortableItem
+                        key={item?.id ?? `empty-${index}`}
+                        id={item?.id ?? `empty-${index}`}
+                      >
+                        <Card
+                          onClick={() => {
+                            if (item) {
+                              setSelectedBill(item);
+                              setModalOpen(true);
+                            }
+                          }}
+                          sx={{
+                            height: "100%", // Fill SortableItem
+                            cursor: item ? "pointer" : "default",
+                            bgcolor: item ? "#fff" : "#e0e0e0",
+                            display: "flex",
+                            flexDirection: "column",
+                            justifyContent: "center",
+                            alignItems: "center",
+                            position: "relative",
+                            border: item ? "2px solid #4caf50" : "none",
+                          }}
+                        >
+                          {item ? (
+                            <>
+                              <Box sx={{ textAlign: "center" }}>
+                                <Typography
+                                  variant="subtitle2"
+                                  fontWeight="bold"
+                                >
+                                  {item.customerName}
+                                </Typography>
+                                <Typography variant="body2" color="primary">
+                                  ₹{Math.round(item.finalAmount)}
+                                </Typography>
+                              </Box>
+                              <Box
+                                sx={{
+                                  position: "absolute",
+                                  top: 0,
+                                  right: 0,
+                                }}
+                              >
+                                <IconButton
+                                  size="small"
+                                  color="primary"
+                                  onClick={(e) => handleEditQueueItem(e, item)}
+                                >
+                                  <EditIcon fontSize="small" />
+                                </IconButton>
+                                <IconButton
+                                  size="small"
+                                  color="error"
+                                  onClick={(e) => removeFromQueue(e, index)}
+                                >
+                                  <RemoveCircleOutlineIcon fontSize="small" />
+                                </IconButton>
+                              </Box>
+                            </>
+                          ) : (
+                            <Typography variant="caption" color="text.disabled">
+                              Empty
+                            </Typography>
+                          )}
+                        </Card>
+                      </SortableItem>
+                    ))}
+                  </Box>
+                </SortableContext>
+              </DndContext>
+
+              <Stack direction="row" spacing={2} sx={{ mt: 3 }}>
+                <Button
+                  variant="contained"
+                  fullWidth
+                  size="large"
+                  startIcon={<PrintIcon />}
+                  onClick={handlePrint}
+                >
+                  Print
+                </Button>
+                <Button
+                  variant="outlined"
+                  fullWidth
+                  size="large"
+                  startIcon={<PictureAsPdfIcon />}
+                  onClick={handleSavePdf}
+                >
+                  Save PDF
+                </Button>
+              </Stack>
+
+              <Alert severity="info" sx={{ mt: 2, fontSize: "0.8rem" }}>
+                Print works best on PC. For Mobile, use "Save PDF".
+              </Alert>
+            </Paper>
+          </Grid>
+        </Grid>
+      </Container>
+
+      {/* Modal Preview */}
+      <Dialog
+        open={modalOpen}
+        onClose={() => setModalOpen(false)}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle>Bill Preview</DialogTitle>
+        <DialogContent dividers sx={{ bgcolor: "#f5f5f5", p: 2 }}>
+          {selectedBill?.type === "interest" ? (
+            <InterestReceipt data={selectedBill} previewMode={true} />
+          ) : (
+            <BillReceipt data={selectedBill} previewMode={true} />
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Hidden Print Template */}
+
+      <PrintTemplate ref={printRef} queue={printQueue} />
+
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={6000}
+        onClose={() => setSnackbar({ ...snackbar, open: false })}
+      >
+        <Alert
+          onClose={() => setSnackbar({ ...snackbar, open: false })}
+          severity={snackbar.severity}
+          sx={{ width: "100%" }}
         >
-          <DialogTitle>Bill Preview</DialogTitle>
-          <DialogContent dividers sx={{ bgcolor: "#f5f5f5", p: 2 }}>
-            {selectedBill?.type === "interest" ? (
-              <InterestReceipt data={selectedBill} previewMode={true} />
-            ) : (
-              <BillReceipt data={selectedBill} previewMode={true} />
-            )}
-          </DialogContent>
-        </Dialog>
-
-        {/* Hidden Print Template */}
-
-        <PrintTemplate ref={printRef} queue={printQueue} />
-
-        <Snackbar
-            open={snackbar.open}
-            autoHideDuration={6000}
-            onClose={() => setSnackbar({ ...snackbar, open: false })}
-        >
-            <Alert onClose={() => setSnackbar({ ...snackbar, open: false })} severity={snackbar.severity} sx={{ width: '100%' }}>
-            {snackbar.message}
-            </Alert>
-        </Snackbar>
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
     </Box>
   );
 }
@@ -1202,10 +1264,10 @@ function MainCalculator() {
 function App() {
   return (
     <ThemeProvider theme={theme}>
-        <Routes>
-            <Route path="/" element={<MainCalculator />} />
-            <Route path="/records" element={<RecordsPage />} />
-        </Routes>
+      <Routes>
+        <Route path="/" element={<MainCalculator />} />
+        <Route path="/records" element={<RecordsPage />} />
+      </Routes>
     </ThemeProvider>
   );
 }
