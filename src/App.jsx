@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
+import { useNavigate, useLocation, Routes, Route, Link } from "react-router-dom";
 import {
   Container,
   Grid,
@@ -21,7 +22,10 @@ import {
   Alert,
   Tabs,
   Tab,
+  Snackbar,
 } from "@mui/material";
+import SaveIcon from '@mui/icons-material/Save';
+import DescriptionIcon from '@mui/icons-material/Description';
 import DeleteIcon from "@mui/icons-material/Delete";
 import AddCircleIcon from "@mui/icons-material/AddCircle";
 import PrintIcon from "@mui/icons-material/Print";
@@ -29,14 +33,33 @@ import PictureAsPdfIcon from "@mui/icons-material/PictureAsPdf";
 import RestartAltIcon from "@mui/icons-material/RestartAlt";
 import ClearAllIcon from "@mui/icons-material/ClearAll";
 import RemoveCircleOutlineIcon from "@mui/icons-material/RemoveCircleOutline";
+import EditIcon from "@mui/icons-material/Edit";
 import { useReactToPrint } from "react-to-print";
 import { PrintTemplate } from "./pages/billing/PrintTemplate";
 import { BillReceipt } from "./components/BillRecept";
 import { InterestReceipt } from "./components/InterestReceipt";
+import RecordsPage from "./pages/RecordsPage"; 
+import { createRecord, updateRecord } from "./api/recordApi"; 
 import { v4 as uuidv4 } from "uuid";
 import { jsPDF } from "jspdf";
 import html2canvas from "html2canvas";
 import Avatar from "@mui/material/Avatar";
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+} from "@dnd-kit/core";
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  rectSortingStrategy,
+} from "@dnd-kit/sortable";
+import { SortableItem } from "./components/SortableItem";
+import { Navbar } from "./components/Navbar";
 
 const theme = createTheme({
   palette: {
@@ -60,7 +83,23 @@ const theme = createTheme({
   },
 });
 
-function App() {
+function MainCalculator() {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
+
+  // --- DnD Sensors ---
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8,
+      },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
+
   // --- Refs ---
   const printRef = useRef(null); // Reference for the Hidden Print Template
 
@@ -84,15 +123,13 @@ function App() {
 
   // --- Queue State ---
   const [printQueue, setPrintQueue] = useState([
-    null,
-    null,
-    null,
-    null,
-    null,
-    null,
+    null, null, null, null, null, null,
   ]);
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedBill, setSelectedBill] = useState(null);
+
+  // --- Edit Mode State ---
+  const [currentRecordId, setCurrentRecordId] = useState(null);
 
   // --- Calculations ---
   const [calcs, setCalcs] = useState({
@@ -138,6 +175,31 @@ function App() {
     });
   }, [paddyEntries, tarePerBag, rate, labourCharge, adjustments]);
 
+  // --- Load Edit Data from Router State ---
+  useEffect(() => {
+    if (location.state && location.state.editRecord) {
+      const record = location.state.editRecord;
+      // Populate fields
+      setCustomerName(record.customerName);
+      setDate(new Date(record.date).toISOString().split('T')[0]);
+      
+      if (record.type === 'interest') {
+        setTabValue(1);
+        setIntEntries(record.data.entries || []);
+      } else {
+        setTabValue(0);
+        setStockPlace(record.data.stockPlace || "");
+        setPaddyEntries(record.data.entries || []);
+        setTarePerBag(record.data.tarePerBag || 2);
+        setRate(record.data.rate || "");
+        setLabourCharge(record.data.labourCharge || 12);
+        setAdjustments(record.data.adjustments || []);
+      }
+      // Store ID for update
+      setCurrentRecordId(record._id);
+    }
+  }, [location.state]);
+
   // --- Handlers ---
   const handleClearForm = () => {
     setCustomerName("");
@@ -146,6 +208,10 @@ function App() {
     setRate("");
     setAdjustments([]);
     setIntEntries([]);
+    setCurrentRecordId(null);
+    setStockPlace([]);
+    // Clear router state so refresh doesn't reload edit
+    navigate(location.pathname, { replace: true, state: {} });
   };
 
   const handleClearQueue = () =>
@@ -167,7 +233,7 @@ function App() {
       customerName,
       stockPlace,
       date,
-      entries: [...paddyEntries], // Store copy of entries
+      entries: [...paddyEntries], 
       totalWeight: calcs.totalWeight,
       totalBags: calcs.totalBags,
       tareWeight: calcs.tareWeight,
@@ -202,7 +268,6 @@ function App() {
       return;
     }
 
-    // Calculate final total just for metadata (optional)
     let final = 0;
     intEntries.forEach(adj => {
        if(adj.type === 'sum') return; 
@@ -232,9 +297,107 @@ function App() {
     setPrintQueue(newQueue);
   };
 
-  // --- Printing Logic (Fix for Ref Error) ---
+  const handleEditQueueItem = (e, item) => {
+    e.stopPropagation();
+    setCustomerName(item.customerName || "");
+    setDate(item.date || new Date().toISOString().split("T")[0]);
+
+    if (item.type === "interest") {
+      setTabValue(1);
+      setIntEntries(item.entries || []);
+    } else {
+      setTabValue(0);
+      setStockPlace(item.stockPlace || "");
+      setPaddyEntries(item.entries || []);
+      setTarePerBag(item.tarePerBag || 2);
+      setRate(item.rate || "");
+      setLabourCharge(item.labourCharge || 12);
+      setAdjustments(item.adjustments || []);
+    }
+  };
+
+  const handleDragEnd = (event) => {
+    const { active, over } = event;
+
+    if (active.id !== over.id) {
+      setPrintQueue((items) => {
+        const oldIndex = items.findIndex(
+          (item, index) => (item?.id ?? `empty-${index}`) === active.id
+        );
+        const newIndex = items.findIndex(
+          (item, index) => (item?.id ?? `empty-${index}`) === over.id
+        );
+
+        return arrayMove(items, oldIndex, newIndex);
+      });
+    }
+  };
+
+  const handleSaveToDB = async () => {
+    if (!customerName) {
+       setSnackbar({ open: true, message: 'Customer Name is required', severity: 'error' });
+       return;
+    }
+
+    let payload = {
+        customerName,
+        date,
+    };
+
+    if (tabValue === 1) {
+        if(intEntries.length === 0) {
+            setSnackbar({ open: true, message: 'Add at least one entry', severity: 'error' });
+            return;
+        }
+        let final = 0;
+        intEntries.forEach(adj => {
+           if(adj.type === 'sum') return; 
+           const val = Number(adj.amount) || 0;
+           if (adj.type === "add") final += val;
+           else final -= val;
+        });
+
+        payload.type = 'interest';
+        payload.finalAmount = final;
+        payload.data = { entries: intEntries };
+    } else {
+        if (!rate) {
+            setSnackbar({ open: true, message: 'Rate is required', severity: 'error' });
+            return;
+        }
+        payload.type = 'paddy';
+        payload.finalAmount = calcs.finalAmount;
+        payload.data = {
+            stockPlace,
+            rate,
+            tarePerBag,
+            labourCharge,
+            totalWeight: calcs.totalWeight,
+            totalBags: calcs.totalBags,
+            netWeight: calcs.netWeight,
+            entries: paddyEntries,
+            adjustments: adjustments
+        };
+    }
+
+    try {
+        if (currentRecordId) {
+            if (!confirm("Are you sure you want to update this record?")) return;
+            await updateRecord(currentRecordId, payload);
+            setSnackbar({ open: true, message: 'Record Updated Successfully!', severity: 'success' });
+        } else {
+            if (!confirm("Are you sure you want to save this new record?")) return;
+            await createRecord(payload);
+            setSnackbar({ open: true, message: 'Record Saved Successfully!', severity: 'success' });
+        }
+    } catch (error) {
+        setSnackbar({ open: true, message: 'Error saving record: ' + error.message, severity: 'error' });
+    }
+  };
+
+  // --- Printing Logic ---
   const handlePrint = useReactToPrint({
-    contentRef: printRef, // Use contentRef instead of content for newer versions
+    contentRef: printRef,
     documentTitle: `Paddy_Bill_${customerName || "Print"}`,
   });
 
@@ -244,15 +407,9 @@ function App() {
       alert("Print Queue is empty! Please add a bill first.");
       return;
     }
-
     if (!element) return;
 
-    // 1. Clone the element
     const clonedElement = element.cloneNode(true);
-
-    // 2. INVISIBLE STYLING:
-    // - We keep it "visible" for the browser renderer
-    // - But we put it BEHIND everything (z-index: -9999) so the user can't see it.
     clonedElement.style.cssText = `
       position: fixed !important;
       left: 0 !important;
@@ -266,32 +423,25 @@ function App() {
       flex-wrap: wrap !important;
       align-content: flex-start !important;
       background: white !important;
-      
-      /* CRITICAL FIXES FOR USER EXPERIENCE */
-      visibility: visible !important; /* Needed for capture */
-      z-index: -9999 !important;      /* Hides it behind your app background */
-      opacity: 1 !important;          /* Needed for capture */
-      pointer-events: none !important; /* Prevents interference with clicks */
+      visibility: visible !important;
+      z-index: -9999 !important;
+      opacity: 1 !important;
+      pointer-events: none !important;
     `;
 
     document.body.appendChild(clonedElement);
 
     try {
-      // 3. Short wait to ensure DOM paints (invisible to user)
       await new Promise((resolve) => setTimeout(resolve, 100));
-
-      // 4. Capture
       const canvas = await html2canvas(clonedElement, {
         scale: 2,
         useCORS: true,
         allowTaint: true,
         backgroundColor: "#ffffff",
-        scrollY: 0, // Ensure we capture from the top of the clone
+        scrollY: 0,
       });
 
       const imgData = canvas.toDataURL("image/jpeg", 0.98);
-
-      // 5. Generate PDF
       const pdf = new jsPDF("p", "mm", "a4");
       const imgWidth = 210;
       const imgHeight = (canvas.height * imgWidth) / canvas.width;
@@ -302,7 +452,6 @@ function App() {
       console.error("PDF Error:", error);
       alert("PDF generation failed.");
     } finally {
-      // 6. Cleanup
       if (document.body.contains(clonedElement)) {
         document.body.removeChild(clonedElement);
       }
@@ -310,44 +459,28 @@ function App() {
   };
 
   return (
-    <ThemeProvider theme={theme}>
-      <Box sx={{ bgcolor: "background.default", minHeight: "100vh", pb: 8 }}>
-        {/* Header */}
-        <Box
-          sx={{
-            bgcolor: "primary.main",
-            color: "white",
-            py: 2,
-            px: 3,
-            mb: 4,
-            boxShadow: 3,
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-          }}
-        >
-          <div>
-            <Typography variant="h5" fontWeight="bold">
-              🌾 MRS Paddy Calculator{" "}
-              <Typography variant="caption">Developed by - Sunil MG</Typography>
-            </Typography>
-          </div>
-
-          <Button
-            color="inherit"
-            onClick={handleClearForm}
-            startIcon={<RestartAltIcon />}
-          >
-            Reset Form
-          </Button>
-        </Box>
+    <Box sx={{ bgcolor: "background.default", minHeight: "100vh", pb: 8 }}>
+        <Navbar />
 
         <Container maxWidth="xl">
           <Grid container spacing={3}>
             {/* LEFT: INPUT */}
             <Grid item xs={12} lg={7}>
               <Paper sx={{ p: 3 }}>
-                {/* Basic Info */}
+                
+                <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
+                    <Typography variant="h6" color="primary" fontWeight="bold">Bill Details</Typography>
+                    <Button
+                        variant="outlined"
+                        color="error"
+                        size="small"
+                        onClick={handleClearForm}
+                        startIcon={<RestartAltIcon />}
+                    >
+                        Reset Form
+                    </Button>
+                </Box>
+
                 <Grid container spacing={2}>
                   <Grid item xs={12} sm={18}>
                     <TextField
@@ -627,15 +760,27 @@ function App() {
                   </Grid>
                 </Paper>
 
-                <Button
-                  variant="contained"
-                  size="large"
-                  fullWidth
-                  sx={{ mt: 3, height: 50 }}
-                  onClick={addToQueue}
-                >
-                  Add Bill to Queue
-                </Button>
+                <Stack direction="row" spacing={2} sx={{ mt: 3 }}>
+                    <Button
+                        variant="contained"
+                        size="large"
+                        fullWidth
+                        onClick={addToQueue}
+                        sx={{ flex: 1, height: 50 }}
+                    >
+                        Add to Queue
+                    </Button>
+                    <Button
+                        variant="contained"
+                        color="success"
+                        size="large"
+                        startIcon={<SaveIcon />}
+                        onClick={handleSaveToDB}
+                        sx={{ flex: 1, height: 50, bgcolor: "#2e7d32" }}
+                    >
+                        {currentRecordId ? "Update Record" : "Save Record"}
+                    </Button>
+                </Stack>
                     </Box>
                   </div>
 
@@ -842,16 +987,28 @@ function App() {
                             </Grid>
                           </Paper>
 
-                          <Button
-                            variant="contained"
-                            color="secondary"
-                            size="large"
-                            fullWidth
-                            sx={{ mt: 3, height: 50 }}
-                            onClick={addInterestToQueue}
-                          >
-                            Add Interest Note to Queue
-                          </Button>
+                          <Stack direction="row" spacing={2} sx={{ mt: 3 }}>
+                            <Button
+                                variant="contained"
+                                color="secondary"
+                                size="large"
+                                fullWidth
+                                onClick={addInterestToQueue}
+                                sx={{ flex: 1, height: 50 }}
+                            >
+                                Add to Queue
+                            </Button>
+                            <Button
+                                variant="contained"
+                                color="success"
+                                size="large"
+                                startIcon={<SaveIcon />}
+                                onClick={handleSaveToDB}
+                                sx={{ flex: 1, height: 50, bgcolor: "#2e7d32" }}
+                            >
+                                {currentRecordId ? "Update Interest" : "Save Interest"}
+                            </Button>
+                          </Stack>
                         </Box>
                       </Box>
                     )}
@@ -881,65 +1038,103 @@ function App() {
                 </Box>
 
                 {/* Visualizer Grid */}
-                <Box
-                  sx={{
-                    display: "grid",
-                    gridTemplateColumns: "1fr 1fr", // Still 2 columns wide
-                    gridTemplateRows: "repeat(3, 1fr)", // 3 rows tall for 6 items
-                    gap: 2,
-                    aspectRatio: "1 / 1.414", // Maintain A4 aspect ratio
-                    bgcolor: "#eeeeee",
-                    p: 2,
-                    borderRadius: 2,
-                  }}
+                <DndContext
+                  sensors={sensors}
+                  collisionDetection={closestCenter}
+                  onDragEnd={handleDragEnd}
                 >
-                  {printQueue.map((item, index) => (
-                    <Card
-                      key={index}
-                      onClick={() => {
-                        if (item) {
-                          setSelectedBill(item);
-                          setModalOpen(true);
-                        }
-                      }}
+                  <SortableContext
+                    items={printQueue.map(
+                      (item, index) => item?.id ?? `empty-${index}`
+                    )}
+                    strategy={rectSortingStrategy}
+                  >
+                    <Box
                       sx={{
-                        cursor: item ? "pointer" : "default",
-                        bgcolor: item ? "#fff" : "#e0e0e0",
-                        display: "flex",
-                        flexDirection: "column",
-                        justifyContent: "center",
-                        alignItems: "center",
-                        position: "relative",
-                        border: item ? "2px solid #4caf50" : "none",
+                        display: "grid",
+                        gridTemplateColumns: "1fr 1fr", // Still 2 columns wide
+                        gridTemplateRows: "repeat(3, 1fr)", // 3 rows tall for 6 items
+                        gap: 2,
+                        aspectRatio: "1 / 1.414", // Maintain A4 aspect ratio
+                        bgcolor: "#eeeeee",
+                        p: 2,
+                        borderRadius: 2,
                       }}
                     >
-                      {item ? (
-                        <>
-                          <Box sx={{ textAlign: "center" }}>
-                            <Typography variant="subtitle2" fontWeight="bold">
-                              {item.customerName}
-                            </Typography>
-                            <Typography variant="body2" color="primary">
-                              ₹{Math.round(item.finalAmount)}
-                            </Typography>
-                          </Box>
-                          <IconButton
-                            size="small"
-                            color="error"
-                            sx={{ position: "absolute", top: 0, right: 0 }}
-                            onClick={(e) => removeFromQueue(e, index)}
+                      {printQueue.map((item, index) => (
+                        <SortableItem
+                          key={item?.id ?? `empty-${index}`}
+                          id={item?.id ?? `empty-${index}`}
+                        >
+                          <Card
+                            onClick={() => {
+                              if (item) {
+                                setSelectedBill(item);
+                                setModalOpen(true);
+                              }
+                            }}
+                            sx={{
+                              height: "100%", // Fill SortableItem
+                              cursor: item ? "pointer" : "default",
+                              bgcolor: item ? "#fff" : "#e0e0e0",
+                              display: "flex",
+                              flexDirection: "column",
+                              justifyContent: "center",
+                              alignItems: "center",
+                              position: "relative",
+                              border: item ? "2px solid #4caf50" : "none",
+                            }}
                           >
-                            <RemoveCircleOutlineIcon fontSize="small" />
-                          </IconButton>
-                        </>
-                      ) : (
-                        <Typography variant="caption" color="text.disabled">
-                          Empty
-                        </Typography>
-                      )}
-                    </Card>
-                  ))}
-                </Box>
+                            {item ? (
+                              <>
+                                <Box sx={{ textAlign: "center" }}>
+                                  <Typography
+                                    variant="subtitle2"
+                                    fontWeight="bold"
+                                  >
+                                    {item.customerName}
+                                  </Typography>
+                                  <Typography variant="body2" color="primary">
+                                    ₹{Math.round(item.finalAmount)}
+                                  </Typography>
+                                </Box>
+                                <Box
+                                  sx={{
+                                    position: "absolute",
+                                    top: 0,
+                                    right: 0,
+                                  }}
+                                >
+                                  <IconButton
+                                    size="small"
+                                    color="primary"
+                                    onClick={(e) => handleEditQueueItem(e, item)}
+                                  >
+                                    <EditIcon fontSize="small" />
+                                  </IconButton>
+                                  <IconButton
+                                    size="small"
+                                    color="error"
+                                    onClick={(e) => removeFromQueue(e, index)}
+                                  >
+                                    <RemoveCircleOutlineIcon fontSize="small" />
+                                  </IconButton>
+                                </Box>
+                              </>
+                            ) : (
+                              <Typography
+                                variant="caption"
+                                color="text.disabled"
+                              >
+                                Empty
+                              </Typography>
+                            )}
+                          </Card>
+                        </SortableItem>
+                      ))}
+                    </Box>
+                  </SortableContext>
+                </DndContext>
 
                 <Stack direction="row" spacing={2} sx={{ mt: 3 }}>
                   <Button
@@ -990,7 +1185,27 @@ function App() {
         {/* Hidden Print Template */}
 
         <PrintTemplate ref={printRef} queue={printQueue} />
-      </Box>
+
+        <Snackbar
+            open={snackbar.open}
+            autoHideDuration={6000}
+            onClose={() => setSnackbar({ ...snackbar, open: false })}
+        >
+            <Alert onClose={() => setSnackbar({ ...snackbar, open: false })} severity={snackbar.severity} sx={{ width: '100%' }}>
+            {snackbar.message}
+            </Alert>
+        </Snackbar>
+    </Box>
+  );
+}
+
+function App() {
+  return (
+    <ThemeProvider theme={theme}>
+        <Routes>
+            <Route path="/" element={<MainCalculator />} />
+            <Route path="/records" element={<RecordsPage />} />
+        </Routes>
     </ThemeProvider>
   );
 }

@@ -121,7 +121,7 @@ export const BillReceipt = ({ data, previewMode = false }) => {
                 style={{
                   textAlign: "right",
                   flex: 1,
-                  marginLeft: "10px", 
+                  marginLeft: "10px",
                 }}
               >
                 {adj.note || (adj.type === "sub" ? "Paid by Cash" : "Added")}
