@@ -3,6 +3,7 @@ import { Box, Typography, Button } from '@mui/material';
 import { Link, useLocation } from 'react-router-dom';
 import CalculateIcon from '@mui/icons-material/Calculate';
 import HistoryIcon from '@mui/icons-material/History';
+import DashboardIcon from '@mui/icons-material/Dashboard';
 
 export const Navbar = ({ actions }) => {
   const location = useLocation();
@@ -59,6 +60,19 @@ export const Navbar = ({ actions }) => {
             }}
          >
             Records
+         </Button>
+         <Button 
+            color="inherit" 
+            component={Link} 
+            to="/dashboard"
+            startIcon={<DashboardIcon />}
+             sx={{ 
+                bgcolor: location.pathname === '/dashboard' ? 'rgba(255,255,255,0.1)' : 'transparent',
+                fontWeight: location.pathname === '/dashboard' ? 'bold' : 'normal',
+                display: { xs: 'none', sm: 'flex' }
+            }}
+         >
+            Dashboard
          </Button>
          
          {/* Page Specific Actions */}

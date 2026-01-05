@@ -23,6 +23,10 @@ import {
   Tabs,
   Tab,
   Snackbar,
+  Select,
+  MenuItem,
+  FormControl,
+  InputLabel,
 } from "@mui/material";
 import SaveIcon from "@mui/icons-material/Save";
 import DescriptionIcon from "@mui/icons-material/Description";
@@ -39,6 +43,7 @@ import { PrintTemplate } from "./pages/billing/PrintTemplate";
 import { BillReceipt } from "./components/BillRecept";
 import { InterestReceipt } from "./components/InterestReceipt";
 import RecordsPage from "./pages/RecordsPage";
+import DashboardPage from "./pages/DashboardPage";
 import { createRecord, updateRecord } from "./api/recordApi";
 import { v4 as uuidv4 } from "uuid";
 import { jsPDF } from "jspdf";
@@ -118,7 +123,9 @@ function MainCalculator() {
   const [rate, setRate] = useState("");
   const [labourCharge, setLabourCharge] = useState(12);
   const [adjustments, setAdjustments] = useState([]);
-  const [stockPlace, setStockPlace] = useState([]);
+  const [stockPlace, setStockPlace] = useState("");
+  const [paddyType, setPaddyType] = useState("");
+  const [paidAmount, setPaidAmount] = useState("");
 
   // --- Tab State ---
   const [tabValue, setTabValue] = useState(0);
@@ -192,6 +199,8 @@ function MainCalculator() {
       } else {
         setTabValue(0);
         setStockPlace(record.data.stockPlace || "");
+        setPaddyType(record.data.paddyType || "Shree Ram");
+        setPaidAmount(record.data.paidAmount || "");
         setPaddyEntries(record.data.entries || []);
         setTarePerBag(record.data.tarePerBag || 2);
         setRate(record.data.rate || "");
@@ -213,6 +222,8 @@ function MainCalculator() {
     setIntEntries([]);
     setCurrentRecordId(null);
     setStockPlace([]);
+    setPaddyType("");
+    setPaidAmount("");
     // Clear router state so refresh doesn't reload edit
     navigate(location.pathname, { replace: true, state: {} });
   };
@@ -226,10 +237,21 @@ function MainCalculator() {
       return;
     }
 
+    if (!paddyType) {
+        alert("Please select Paddy Type");
+        return;
+    }
+
+    if (!stockPlace) {
+        alert("Please select Stock Place");
+        return;
+    }
+
     const billData = {
       id: uuidv4(),
       customerName,
       stockPlace,
+      paddyType,
       date,
       entries: [...paddyEntries],
       totalWeight: calcs.totalWeight,
@@ -301,6 +323,8 @@ function MainCalculator() {
     } else {
       setTabValue(0);
       setStockPlace(item.stockPlace || "");
+      setPaddyType(item.paddyType || "Shree Ram");
+      setPaidAmount(item.paidAmount || "");
       setPaddyEntries(item.entries || []);
       setTarePerBag(item.tarePerBag || 2);
       setRate(item.rate || "");
@@ -369,10 +393,20 @@ function MainCalculator() {
         });
         return;
       }
+      if (!paddyType) {
+        setSnackbar({
+            open: true,
+            message: "Paddy Type is required",
+            severity: "error",
+        });
+        return;
+      }
       payload.type = "paddy";
       payload.finalAmount = calcs.finalAmount;
       payload.data = {
         stockPlace,
+        paddyType,
+        paidAmount: paidAmount ? Number(paidAmount) : 0,
         rate,
         tarePerBag,
         labourCharge,
@@ -504,16 +538,38 @@ function MainCalculator() {
               </Box>
 
               <Grid container spacing={2}>
-                <Grid item xs={12} sm={18}>
-                  <TextField
-                    fullWidth
-                    label="Stock Place"
-                    variant="outlined"
-                    value={stockPlace}
-                    onChange={(e) => setStockPlace(e.target.value)}
-                  />
+                  <Grid item xs={12} sm={3} minWidth={150}>
+                    <FormControl fullWidth>
+                    <InputLabel id="stock-place-label">Stock Place</InputLabel>
+                    <Select
+                        labelId="stock-place-label"
+                        value={stockPlace}
+                        label="Stock Place"
+                        onChange={(e) => setStockPlace(e.target.value)}
+                        required
+                    >
+                        <MenuItem value="Mill">Mill</MenuItem>
+                        <MenuItem value="Godan">Godan</MenuItem>
+                        <MenuItem value="Other">Other</MenuItem>
+
+                    </Select>
+                    </FormControl>
                 </Grid>
-                <Grid item xs={12} sm={8}>
+                <Grid item xs={12} sm={3} minWidth={150}>
+                    <FormControl fullWidth>
+                    <InputLabel id="paddy-type-label">Paddy Type</InputLabel>
+                    <Select
+                        labelId="paddy-type-label"
+                        value={paddyType}
+                        label="Paddy Type"
+                        onChange={(e) => setPaddyType(e.target.value)}
+                    >
+                        <MenuItem value="Shree Ram">Shree Ram</MenuItem>
+                        <MenuItem value="RNR">RNR</MenuItem>
+                    </Select>
+                    </FormControl>
+                </Grid>
+                {/* <Grid item xs={12} sm={6}>
                   <TextField
                     fullWidth
                     label="Customer Name"
@@ -522,7 +578,17 @@ function MainCalculator() {
                     onChange={(e) => setCustomerName(e.target.value)}
                   />
                 </Grid>
-                <Grid item xs={12} sm={4}>
+                <Grid item xs={12} sm={6}>
+                    <TextField
+                        fullWidth
+                        label="Paid Amount"
+                        type="number"
+                        variant="outlined"
+                        value={paidAmount}
+                        onChange={(e) => setPaidAmount(e.target.value)}
+                    />
+                </Grid> */}
+                <Grid item xs={12} sm={6}>
                   <TextField
                     fullWidth
                     type="date"
@@ -533,6 +599,28 @@ function MainCalculator() {
                   />
                 </Grid>
               </Grid>
+
+               <Grid container spacing={2} marginTop={2} marginBottom={2}>
+                 <Grid item xs={12} sm={6}>
+                  <TextField
+                    fullWidth
+                    label="Customer Name"
+                    variant="outlined"
+                    value={customerName}
+                    onChange={(e) => setCustomerName(e.target.value)}
+                  />
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                    <TextField
+                        fullWidth
+                        label="Paid Amount"
+                        type="number"
+                        variant="outlined"
+                        value={paidAmount}
+                        onChange={(e) => setPaidAmount(e.target.value)}
+                    />
+                </Grid>
+               </Grid>
 
               {/* Paddy Entries */}
               <Box sx={{ borderBottom: 1, borderColor: "divider", mb: 2 }}>
@@ -1251,6 +1339,7 @@ function App() {
         <Routes>
             <Route path="/" element={<MainCalculator />} />
             <Route path="/records" element={<RecordsPage />} />
+            <Route path="/dashboard" element={<DashboardPage />} />
         </Routes>
         </ThemeProvider>
     </PrintQueueProvider>

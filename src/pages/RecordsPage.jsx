@@ -24,7 +24,9 @@ import {
   Select,
   MenuItem,
   Snackbar,
-  Alert
+  Alert,
+  Tabs,
+  Tab
 } from '@mui/material';
 import LocalPrintshopIcon from '@mui/icons-material/LocalPrintshop';
 import EditIcon from '@mui/icons-material/Edit';
@@ -39,6 +41,8 @@ import { v4 as uuidv4 } from 'uuid';
 import { useReactToPrint } from "react-to-print";
 import { PrintTemplate } from './billing/PrintTemplate';
 
+import { RecordDetails } from '../components/RecordDetails';
+
 const RecordsPage = () => {
   const navigate = useNavigate();
   const [records, setRecords] = useState([]);
@@ -47,6 +51,11 @@ const RecordsPage = () => {
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
   const [printDialogOpen, setPrintDialogOpen] = useState(false);
   const [selectedForPrint, setSelectedForPrint] = useState(null);
+  
+  // Details Modal
+  const [detailsDialogOpen, setDetailsDialogOpen] = useState(false);
+  const [selectedRecordForDetails, setSelectedRecordForDetails] = useState(null);
+
   const [directPrintQueue, setDirectPrintQueue] = useState([null, null, null, null, null, null]);
   const directPrintRef = useRef(null);
   
@@ -56,7 +65,8 @@ const RecordsPage = () => {
   const [search, setSearch] = useState('');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
-  const [type, setType] = useState('');
+  const [type, setType] = useState('paddy');
+  const [tabValue, setTabValue] = useState(0);
 
   // Delete Confirm
   const [confirmOpen, setConfirmOpen] = useState(false);
@@ -86,9 +96,18 @@ const RecordsPage = () => {
     fetchRecords();
   }, [page, type]); // Refresh on page or type change
 
-  const handleSearch = () => {
+  const handleTabChange = (event, newValue) => {
+    setTabValue(newValue);
+    setType(newValue === 0 ? 'paddy' : 'interest');
     setPage(1);
-    fetchRecords();
+  };
+
+  const handleSearch = () => {
+    if (page === 1) {
+        fetchRecords();
+    } else {
+        setPage(1);
+    }
   };
 
   const handleDeleteClick = (id) => {
@@ -187,8 +206,14 @@ const RecordsPage = () => {
     }
     return billData;
   };
+  
+  const handleRowClick = (record) => {
+      setSelectedRecordForDetails(record);
+      setDetailsDialogOpen(true);
+  };
 
-  const handlePrintClick = (record) => {
+  const handlePrintClick = (record, e) => {
+      e.stopPropagation(); // Prevent row click
       setSelectedForPrint(record);
       setPrintDialogOpen(true);
   };
@@ -262,6 +287,13 @@ const RecordsPage = () => {
           </Box>
         </Box>
 
+        <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 2 }}>
+          <Tabs value={tabValue} onChange={handleTabChange} aria-label="record-tabs">
+            <Tab label="Paddy Records" />
+            <Tab label="Interest Records" />
+          </Tabs>
+        </Box>
+
       {/* Filters */}
       <Paper sx={{ p: 2, mb: 3 }}>
         <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', alignItems: 'center' }}>
@@ -272,18 +304,7 @@ const RecordsPage = () => {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
-           <FormControl size="small" sx={{ minWidth: 120 }}>
-            <InputLabel>Type</InputLabel>
-            <Select
-              value={type}
-              label="Type"
-              onChange={(e) => setType(e.target.value)}
-            >
-              <MenuItem value="">All</MenuItem>
-              <MenuItem value="paddy">Paddy Bill</MenuItem>
-              <MenuItem value="interest">Interest</MenuItem>
-            </Select>
-          </FormControl>
+
           <TextField
             label="From Date"
             type="date"
@@ -313,34 +334,57 @@ const RecordsPage = () => {
             <TableRow>
               <TableCell>Date</TableCell>
               <TableCell>Customer Name</TableCell>
-              <TableCell>Type</TableCell>
-              <TableCell align="right">Amount (₹)</TableCell>
+              {type === 'paddy' ? (
+                <>
+                    <TableCell>Paddy Type</TableCell>
+                    <TableCell align="center">Bags</TableCell>
+                    <TableCell align="right">Paid (₹)</TableCell>
+                </>
+              ) : (
+                <TableCell>Type</TableCell>
+              )}
+              <TableCell align="right">Payable (₹)</TableCell>
               <TableCell align="center">Actions</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
             {records.map((row) => (
-              <TableRow key={row._id}>
+              <TableRow 
+                key={row._id} 
+                hover 
+                onClick={() => handleRowClick(row)}
+                sx={{ cursor: 'pointer' }}
+              >
                 <TableCell>{new Date(row.date).toLocaleDateString()}</TableCell>
                 <TableCell>{row.customerName}</TableCell>
-                <TableCell>
-                  <Chip 
-                    label={row.type === 'paddy' ? 'Paddy' : 'Interest'} 
-                    color={row.type === 'paddy' ? 'success' : 'warning'} 
-                    size="small" 
-                  />
-                </TableCell>
+                {type === 'paddy' ? (
+                  <>
+                    <TableCell>{row.data?.paddyType || '-'}</TableCell>
+                    <TableCell align="center">{row.data?.totalBags || '-'}</TableCell>
+                    <TableCell align="right">
+                        {row.data?.paidAmount ? Number(row.data.paidAmount).toLocaleString('en-IN', { minimumFractionDigits: 2 }) : '-'}
+                    </TableCell>
+                  </>
+                ) : (
+                    <TableCell>
+                    <Chip 
+                        label={row.type === 'paddy' ? 'Paddy' : 'Interest'} 
+                        color={row.type === 'paddy' ? 'success' : 'warning'} 
+                        size="small" 
+                    />
+                    </TableCell>
+                )}
                 <TableCell align="right" sx={{ fontWeight: 'bold' }}>
                   {row.finalAmount?.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                 </TableCell>
-                <TableCell align="center">
-                  <IconButton color="primary" onClick={() => handlePrintClick(row)} title="Print Options">
+                <TableCell align="center" onClick={(e) => e.stopPropagation()}> 
+                  <IconButton color="primary" onClick={(e) => handlePrintClick(row, e)} title="Print Options">
                     <LocalPrintshopIcon />
                   </IconButton>
-                  <IconButton color="primary" onClick={() => handleEdit(row)}>
+                  <IconButton color="primary" onClick={(e) => { e.stopPropagation(); handleEdit(row); }}>
                     <EditIcon />
                   </IconButton>
-                  <IconButton color="error" onClick={() => handleDeleteClick(row._id)}>
+                  <IconButton color="error" onClick={(e) => { e.stopPropagation(); handleDeleteClick(row._id); }}>
                     <DeleteIcon />
                   </IconButton>
                 </TableCell>
@@ -348,7 +392,7 @@ const RecordsPage = () => {
             ))}
             {records.length === 0 && !loading && (
                <TableRow>
-                 <TableCell colSpan={5} align="center">No records found</TableCell>
+                 <TableCell colSpan={7} align="center">No records found</TableCell>
                </TableRow>
             )}
           </TableBody>
@@ -378,6 +422,18 @@ const RecordsPage = () => {
           </Button>
         </DialogActions>
       </Dialog>
+      
+      {/* Details Dialog */}
+       <Dialog open={detailsDialogOpen} onClose={() => setDetailsDialogOpen(false)} maxWidth="lg" fullWidth>
+            <DialogTitle>Record Details</DialogTitle>
+            <DialogContent>
+                <RecordDetails record={selectedRecordForDetails} />
+            </DialogContent>
+             <DialogActions>
+                <Button onClick={() => setDetailsDialogOpen(false)}>Close</Button>
+                <Button variant="contained" onClick={() => { setDetailsDialogOpen(false); handlePrintClick(selectedRecordForDetails, { stopPropagation: () => {} }); }}>Print</Button>
+            </DialogActions>
+       </Dialog>
 
       {/* Print Options Dialog */}
       <Dialog open={printDialogOpen} onClose={() => setPrintDialogOpen(false)}>

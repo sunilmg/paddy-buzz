@@ -15,6 +15,7 @@ export const BillReceipt = ({ data, previewMode = false }) => {
 
   const {
     stockPlace,
+    paddyType,
     customerName,
     date,
     entries, // Now using the full entries array
@@ -50,7 +51,7 @@ export const BillReceipt = ({ data, previewMode = false }) => {
     <Wrapper {...wrapperProps}>
       {/* Header */}
       <BillRow className="subEntry">
-        <span> {stockPlace}</span>
+        <span> {stockPlace} - {paddyType}</span>
       </BillRow>
       <BillRow className="header">
         <span>{customerName}</span>

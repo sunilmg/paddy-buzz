@@ -29,6 +29,7 @@
     "react-dom": "^19.2.0",
     "react-router-dom": "^7.11.0",
     "react-to-print": "^3.2.0",
+    "recharts": "^3.6.0",
     "styled-components": "^6.1.19",
     "uuid": "^13.0.0"
   },
