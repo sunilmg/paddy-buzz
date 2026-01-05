@@ -60,6 +60,7 @@ import {
 } from "@dnd-kit/sortable";
 import { SortableItem } from "./components/SortableItem";
 import { Navbar } from "./components/Navbar";
+import { PrintQueueProvider, usePrintQueue } from "./context/PrintQueueContext";
 
 const theme = createTheme({
   palette: {
@@ -126,14 +127,7 @@ function MainCalculator() {
   const [intEntries, setIntEntries] = useState([]);
 
   // --- Queue State ---
-  const [printQueue, setPrintQueue] = useState([
-    null,
-    null,
-    null,
-    null,
-    null,
-    null,
-  ]);
+  const { printQueue, addToPrintQueue, removeFromQueue: ctxRemoveFromQueue, clearQueue, updateQueue } = usePrintQueue();
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedBill, setSelectedBill] = useState(null);
 
@@ -224,16 +218,11 @@ function MainCalculator() {
   };
 
   const handleClearQueue = () =>
-    setPrintQueue([null, null, null, null, null, null]);
+    clearQueue();
 
   const addToQueue = () => {
     if (!customerName || !rate) {
       alert("Please enter Customer Name and Rate");
-      return;
-    }
-    const emptyIndex = printQueue.indexOf(null);
-    if (emptyIndex === -1) {
-      alert("Queue Full. Clear some items.");
       return;
     }
 
@@ -257,9 +246,10 @@ function MainCalculator() {
       finalAmount: calcs.finalAmount,
     };
 
-    const newQueue = [...printQueue];
-    newQueue[emptyIndex] = billData;
-    setPrintQueue(newQueue);
+    const result = addToPrintQueue(billData);
+    if (!result.success) {
+      alert(result.message);
+    }
   };
 
   const addInterestToQueue = () => {
@@ -269,11 +259,6 @@ function MainCalculator() {
     }
     if (intEntries.length === 0) {
       alert("Please add at least one entry");
-      return;
-    }
-    const emptyIndex = printQueue.indexOf(null);
-    if (emptyIndex === -1) {
-      alert("Queue Full. Clear some items.");
       return;
     }
 
@@ -294,16 +279,15 @@ function MainCalculator() {
       finalAmount: final,
     };
 
-    const newQueue = [...printQueue];
-    newQueue[emptyIndex] = billData;
-    setPrintQueue(newQueue);
+    const result = addToPrintQueue(billData);
+    if (!result.success) {
+      alert(result.message);
+    }
   };
 
   const removeFromQueue = (e, index) => {
     e.stopPropagation();
-    const newQueue = [...printQueue];
-    newQueue[index] = null;
-    setPrintQueue(newQueue);
+    ctxRemoveFromQueue(index);
   };
 
   const handleEditQueueItem = (e, item) => {
@@ -329,16 +313,15 @@ function MainCalculator() {
     const { active, over } = event;
 
     if (active.id !== over.id) {
-      setPrintQueue((items) => {
-        const oldIndex = items.findIndex(
+        const oldIndex = printQueue.findIndex(
           (item, index) => (item?.id ?? `empty-${index}`) === active.id
         );
-        const newIndex = items.findIndex(
+        const newIndex = printQueue.findIndex(
           (item, index) => (item?.id ?? `empty-${index}`) === over.id
         );
 
-        return arrayMove(items, oldIndex, newIndex);
-      });
+        const newQ = arrayMove(printQueue, oldIndex, newIndex);
+        updateQueue(newQ);
     }
   };
 
@@ -1263,12 +1246,14 @@ function MainCalculator() {
 
 function App() {
   return (
-    <ThemeProvider theme={theme}>
-      <Routes>
-        <Route path="/" element={<MainCalculator />} />
-        <Route path="/records" element={<RecordsPage />} />
-      </Routes>
-    </ThemeProvider>
+    <PrintQueueProvider>
+        <ThemeProvider theme={theme}>
+        <Routes>
+            <Route path="/" element={<MainCalculator />} />
+            <Route path="/records" element={<RecordsPage />} />
+        </Routes>
+        </ThemeProvider>
+    </PrintQueueProvider>
   );
 }
 

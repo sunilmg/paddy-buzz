@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Container,
   Paper,
@@ -22,8 +22,11 @@ import {
   FormControl,
   InputLabel,
   Select,
-  MenuItem
+  MenuItem,
+  Snackbar,
+  Alert
 } from '@mui/material';
+import LocalPrintshopIcon from '@mui/icons-material/LocalPrintshop';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import DownloadIcon from '@mui/icons-material/Download';
@@ -31,11 +34,21 @@ import UploadIcon from '@mui/icons-material/Upload';
 import { useNavigate } from 'react-router-dom';
 import { getRecords, deleteRecord, exportRecords, importRecords } from '../api/recordApi';
 import { Navbar } from '../components/Navbar';
+import { usePrintQueue } from '../context/PrintQueueContext';
+import { v4 as uuidv4 } from 'uuid';
+import { useReactToPrint } from "react-to-print";
+import { PrintTemplate } from './billing/PrintTemplate';
 
 const RecordsPage = () => {
   const navigate = useNavigate();
   const [records, setRecords] = useState([]);
   const [loading, setLoading] = useState(false);
+  const { addToPrintQueue } = usePrintQueue();
+  const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
+  const [printDialogOpen, setPrintDialogOpen] = useState(false);
+  const [selectedForPrint, setSelectedForPrint] = useState(null);
+  const [directPrintQueue, setDirectPrintQueue] = useState([null, null, null, null, null, null]);
+  const directPrintRef = useRef(null);
   
   // Filters
   const [page, setPage] = useState(1);
@@ -134,6 +147,92 @@ const RecordsPage = () => {
     reader.readAsText(file);
     e.target.value = null; // reset
   };
+
+  const prepareBillData = (record) => {
+    let billData;
+    const newId = uuidv4();
+    const dateStr = new Date(record.date).toISOString().split('T')[0];
+
+    if (record.type === 'interest') {
+        billData = {
+            id: newId,
+            type: 'interest',
+            customerName: record.customerName,
+            date: dateStr,
+            entries: record.data.entries || [],
+            finalAmount: record.finalAmount
+        };
+    } else {
+        // Safe access to data properties
+        const rData = record.data || {};
+        billData = {
+            id: newId,
+            customerName: record.customerName,
+            stockPlace: rData.stockPlace,
+            date: dateStr,
+            entries: rData.entries || [],
+            totalWeight: rData.totalWeight,
+            totalBags: rData.totalBags,
+            tareWeight: (rData.totalBags || 0) * (rData.tarePerBag || 0),
+            tarePerBag: rData.tarePerBag,
+            netWeight: rData.netWeight,
+            rate: rData.rate,
+            grossAmount: ((rData.netWeight || 0) / 100) * (rData.rate || 0),
+            labourCharge: rData.labourCharge,
+            totalLabour: (rData.totalBags || 0) * (rData.labourCharge || 0),
+            netAfterLabour: 0, 
+            adjustments: rData.adjustments || [],
+            finalAmount: record.finalAmount
+        };
+    }
+    return billData;
+  };
+
+  const handlePrintClick = (record) => {
+      setSelectedForPrint(record);
+      setPrintDialogOpen(true);
+  };
+
+  const handleConfirmAddToQueue = () => {
+    if (!selectedForPrint) return;
+    const billData = prepareBillData(selectedForPrint);
+    
+    const result = addToPrintQueue(billData);
+    if (result.success) {
+        setSnackbar({
+            open: true,
+            message: `Added to print queue. Remaining space: ${result.remaining}`,
+            severity: 'success'
+        });
+    } else {
+        setSnackbar({
+            open: true,
+            message: result.message,
+            severity: 'warning'
+        });
+    }
+    setPrintDialogOpen(false);
+  };
+
+  const handleDirectPrintTrigger = useReactToPrint({
+    contentRef: directPrintRef,
+    documentTitle: `Paddy_Bill_Direct_Print`,
+  });
+
+  const handleDirectPrint = async () => {
+      if (!selectedForPrint) return;
+      const billData = prepareBillData(selectedForPrint);
+      // Place in the first slot for printing
+      setDirectPrintQueue([billData, null, null, null, null, null]);
+      
+      // Wait a tick for state to update then print
+      setTimeout(() => {
+          handleDirectPrintTrigger();
+          setPrintDialogOpen(false);
+      }, 100);
+  };
+
+
 
   return (
     <Box sx={{ bgcolor: "background.default", minHeight: "100vh", pb: 8 }}>
@@ -235,6 +334,9 @@ const RecordsPage = () => {
                   {row.finalAmount?.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                 </TableCell>
                 <TableCell align="center">
+                  <IconButton color="primary" onClick={() => handlePrintClick(row)} title="Print Options">
+                    <LocalPrintshopIcon />
+                  </IconButton>
                   <IconButton color="primary" onClick={() => handleEdit(row)}>
                     <EditIcon />
                   </IconButton>
@@ -276,6 +378,40 @@ const RecordsPage = () => {
           </Button>
         </DialogActions>
       </Dialog>
+
+      {/* Print Options Dialog */}
+      <Dialog open={printDialogOpen} onClose={() => setPrintDialogOpen(false)}>
+        <DialogTitle>Print Options</DialogTitle>
+        <DialogContent>
+            <Typography>
+                Do you want to add this record to the print queue or print it directly?
+            </Typography>
+        </DialogContent>
+        <DialogActions>
+            <Button onClick={() => setPrintDialogOpen(false)}>Cancel</Button>
+            <Button onClick={handleConfirmAddToQueue} variant="outlined" color="primary">
+                Add to Queue
+            </Button>
+             <Button onClick={handleDirectPrint} variant="contained" color="success" startIcon={<LocalPrintshopIcon />}>
+                Print Now
+            </Button>
+        </DialogActions>
+      </Dialog>
+
+      <div style={{ display: 'none' }}>
+        <PrintTemplate ref={directPrintRef} queue={directPrintQueue} />
+      </div>
+      <Snackbar 
+        open={snackbar.open} 
+        autoHideDuration={4000} 
+        onClose={() => setSnackbar({ ...snackbar, open: false })}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        <Alert severity={snackbar.severity} onClose={() => setSnackbar({ ...snackbar, open: false })}>
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
+
       </Container>
     </Box>
   );
