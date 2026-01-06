@@ -68,6 +68,10 @@ const RecordsPage = () => {
   const [type, setType] = useState('paddy');
   const [tabValue, setTabValue] = useState(0);
 
+  // Additional Filters
+  const [paddyTypeFilter, setPaddyTypeFilter] = useState('All');
+  const [stockPlaceFilter, setStockPlaceFilter] = useState('All');
+
   // Delete Confirm
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [deleteId, setDeleteId] = useState(null);
@@ -81,7 +85,9 @@ const RecordsPage = () => {
         search,
         startDate,
         endDate,
-        type
+        type,
+        paddyType: paddyTypeFilter,
+        stockPlace: stockPlaceFilter
       });
       setRecords(data.records);
       setTotalPages(data.totalPages);
@@ -94,12 +100,14 @@ const RecordsPage = () => {
 
   useEffect(() => {
     fetchRecords();
-  }, [page, type]); // Refresh on page or type change
+  }, [page, type, paddyTypeFilter, stockPlaceFilter]); // Refresh on filter change
 
   const handleTabChange = (event, newValue) => {
     setTabValue(newValue);
     setType(newValue === 0 ? 'paddy' : 'interest');
     setPage(1);
+    setPaddyTypeFilter('All');
+    setStockPlaceFilter('All');
   };
 
   const handleSearch = () => {
@@ -321,6 +329,38 @@ const RecordsPage = () => {
             value={endDate}
             onChange={(e) => setEndDate(e.target.value)}
           />
+          
+          {type === 'paddy' && (
+              <>
+                <FormControl size="small" sx={{ minWidth: 150 }}>
+                    <InputLabel>Paddy Type</InputLabel>
+                    <Select
+                        value={paddyTypeFilter}
+                        label="Paddy Type"
+                        onChange={(e) => setPaddyTypeFilter(e.target.value)}
+                    >
+                        <MenuItem value="All">All Types</MenuItem>
+                        <MenuItem value="Shree Ram">Shree Ram</MenuItem>
+                        <MenuItem value="RNR">RNR</MenuItem>
+                    </Select>
+                </FormControl>
+
+                <FormControl size="small" sx={{ minWidth: 150 }}>
+                    <InputLabel>Stock Place</InputLabel>
+                    <Select
+                        value={stockPlaceFilter}
+                        label="Stock Place"
+                        onChange={(e) => setStockPlaceFilter(e.target.value)}
+                    >
+                        <MenuItem value="All">All Places</MenuItem>
+                        <MenuItem value="Mill">Mill</MenuItem>
+                        <MenuItem value="Godan">Godan</MenuItem>
+                        <MenuItem value="Other">Other</MenuItem>
+                    </Select>
+                </FormControl>
+              </>
+          )}
+
           <Button variant="contained" onClick={handleSearch}>
             Filter
           </Button>
@@ -337,6 +377,7 @@ const RecordsPage = () => {
               {type === 'paddy' ? (
                 <>
                     <TableCell>Paddy Type</TableCell>
+                    <TableCell>Stock Place</TableCell>
                     <TableCell align="center">Bags</TableCell>
                     <TableCell align="right">Paid (₹)</TableCell>
                 </>
@@ -360,6 +401,7 @@ const RecordsPage = () => {
                 {type === 'paddy' ? (
                   <>
                     <TableCell>{row.data?.paddyType || '-'}</TableCell>
+                    <TableCell>{row.data?.stockPlace || '-'}</TableCell>
                     <TableCell align="center">{row.data?.totalBags || '-'}</TableCell>
                     <TableCell align="right">
                         {row.data?.paidAmount ? Number(row.data.paidAmount).toLocaleString('en-IN', { minimumFractionDigits: 2 }) : '-'}
@@ -374,6 +416,7 @@ const RecordsPage = () => {
                     />
                     </TableCell>
                 )}
+
                 <TableCell align="right" sx={{ fontWeight: 'bold' }}>
                   {row.finalAmount?.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                 </TableCell>

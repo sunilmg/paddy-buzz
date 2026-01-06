@@ -43,6 +43,9 @@ const DashboardPage = () => {
         "RNR": "",
         "Other": ""
     });
+    
+    // Dashboard Filters
+    const [stockPlaceFilter, setStockPlaceFilter] = useState('All');
 
     const [stats, setStats] = useState({
         totalStats: { bags: 0, weight: 0, revenue: 0, paid: 0, profit: 0 },
@@ -80,7 +83,11 @@ const DashboardPage = () => {
         let grandTotal = { bags: 0, weight: 0, revenue: 0, paid: 0, profit: 0 };
 
         records.forEach(rec => {
-            const place = rec.data?.stockPlace || "Unknown";
+             const place = rec.data?.stockPlace || "Unknown";
+             
+             // Client-side Stock Place Filter
+             if (stockPlaceFilter !== 'All' && place !== stockPlaceFilter) return;
+
             const type = rec.data?.paddyType || "Unknown";
             const bags = Number(rec.data?.totalBags) || 0;
             const weight = Number(rec.data?.netWeight) || 0;
@@ -157,7 +164,7 @@ const DashboardPage = () => {
             tableData: flatTable
         });
 
-    }, [records, marketRates]); // Only depend on these
+    }, [records, marketRates, stockPlaceFilter]); // Only depend on these
 
     const handleApplyFilters = () => {
         fetchData();
@@ -190,8 +197,21 @@ const DashboardPage = () => {
                             value={endDate}
                             onChange={(e) => setEndDate(e.target.value)}
                         />
-                         <Divider orientation="vertical" flexItem />
-                         {/* Market Rates */}
+                        <TextField
+                            select
+                            label="Stock Place"
+                            size="small"
+                            value={stockPlaceFilter}
+                            onChange={(e) => setStockPlaceFilter(e.target.value)}
+                            sx={{ minWidth: 150 }}
+                        >
+                            <MenuItem value="All">All Places</MenuItem>
+                            <MenuItem value="Mill">Mill</MenuItem>
+                            <MenuItem value="Godan">Godan</MenuItem>
+                            <MenuItem value="Other">Other</MenuItem>
+                        </TextField>
+                        <Divider orientation="vertical" flexItem />
+                        {/* Market Rates */}
                         <Typography variant="subtitle2" color="primary">Market Rates (Per Qtl):</Typography>
                          <TextField
                             label="Shree Ram Rate"

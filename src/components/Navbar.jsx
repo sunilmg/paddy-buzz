@@ -22,6 +22,9 @@ export const Navbar = ({ actions }) => {
         alignItems: "center",
         flexWrap: "wrap",
         gap: 2,
+        position:"sticky",
+        top: 0,
+        zIndex: 1000
       }}
     >
       <Box display="flex" flexDirection="column">
