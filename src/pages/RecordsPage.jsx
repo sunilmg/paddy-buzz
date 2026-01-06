@@ -196,20 +196,22 @@ const RecordsPage = () => {
             id: newId,
             customerName: record.customerName,
             stockPlace: rData.stockPlace,
+            paddyType: rData.paddyType,
             date: dateStr,
             entries: rData.entries || [],
             totalWeight: rData.totalWeight,
             totalBags: rData.totalBags,
-            tareWeight: (rData.totalBags || 0) * (rData.tarePerBag || 0),
+            tareWeight: rData.tareWeight || ((rData.totalBags || 0) * (rData.tarePerBag || 0)),
             tarePerBag: rData.tarePerBag,
             netWeight: rData.netWeight,
             rate: rData.rate,
-            grossAmount: ((rData.netWeight || 0) / 100) * (rData.rate || 0),
+            grossAmount: rData.grossAmount || (((rData.netWeight || 0) / 100) * (rData.rate || 0)),
             labourCharge: rData.labourCharge,
-            totalLabour: (rData.totalBags || 0) * (rData.labourCharge || 0),
-            netAfterLabour: 0, 
+            totalLabour: rData.totalLabour || ((rData.totalBags || 0) * (rData.labourCharge || 0)),
+            netAfterLabour: rData.netAfterLabour || 0, 
             adjustments: rData.adjustments || [],
-            finalAmount: record.finalAmount
+            finalAmount: record.finalAmount,
+            finalNotes: rData.finalNotes || ''
         };
     }
     return billData;

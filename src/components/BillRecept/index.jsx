@@ -144,25 +144,29 @@ export const BillReceipt = ({ data, previewMode = false }) => {
       </BillRow>
       <DoubleSeparator />
       
-      {/* Footer with Final Notes on same line */}
+      {/* Footer */}
       <BillRow>
-        <span style={{ 
-          display: 'flex', 
-          justifyContent: 'space-between',
-          width: '100%',
-          alignItems: 'center'
-        }}>
-          <span>0000000</span>
-          {finalNotes && (
-            <span style={{
-              fontWeight: "bold",
-              textAlign: "right",
-            }}>
-              {finalNotes}
-            </span>
-          )}
-        </span>
+        <span>0000000</span>
       </BillRow>
+      
+      {/* Final Notes - Right aligned, can wrap to multiple lines */}
+      {finalNotes && (
+        <BillRow>
+          <span
+            style={{
+              display: "block",
+              textAlign: "right",
+              fontWeight: "bold",
+              width: "100%",
+              wordWrap: "break-word",
+              whiteSpace: "pre-wrap",
+              fontSize: "0.9em",
+            }}
+          >
+            {finalNotes}
+          </span>
+        </BillRow>
+      )}
     </Wrapper>
   );
 };
