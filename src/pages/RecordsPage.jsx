@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   Container,
   Paper,
@@ -76,7 +76,7 @@ const RecordsPage = () => {
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [deleteId, setDeleteId] = useState(null);
 
-  const fetchRecords = async () => {
+  const fetchRecords = useCallback(async () => {
     setLoading(true);
     try {
       const data = await getRecords({
@@ -96,11 +96,11 @@ const RecordsPage = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [page, search, startDate, endDate, type, paddyTypeFilter, stockPlaceFilter]);
 
   useEffect(() => {
     fetchRecords();
-  }, [page, type, paddyTypeFilter, stockPlaceFilter]); // Refresh on filter change
+  }, [fetchRecords]);
 
   const handleTabChange = (event, newValue) => {
     setTabValue(newValue);
@@ -128,7 +128,7 @@ const RecordsPage = () => {
       await deleteRecord(deleteId);
       setConfirmOpen(false);
       fetchRecords();
-    } catch (error) {
+    } catch {
       alert("Failed to delete record");
     }
   };

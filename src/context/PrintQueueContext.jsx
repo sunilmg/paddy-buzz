@@ -2,26 +2,25 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 
 const PrintQueueContext = createContext();
 
+// eslint-disable-next-line react-refresh/only-export-components
 export const usePrintQueue = () => useContext(PrintQueueContext);
 
 export const PrintQueueProvider = ({ children }) => {
   // Queue state: fixed size of 6, initialized with nulls
-  const [printQueue, setPrintQueue] = useState([null, null, null, null, null, null]);
-
-  // Load from local storage on mount (optional, but good for persistence)
-  useEffect(() => {
-    const savedQueue = localStorage.getItem('printQueue');
-    if (savedQueue) {
-      try {
-        const parsed = JSON.parse(savedQueue);
-        if (Array.isArray(parsed) && parsed.length === 6) {
-          setPrintQueue(parsed);
+  const [printQueue, setPrintQueue] = useState(() => {
+    try {
+        const saved = localStorage.getItem('printQueue');
+        if (saved) {
+             const parsed = JSON.parse(saved);
+             if (Array.isArray(parsed) && parsed.length === 6) {
+                 return parsed;
+             }
         }
-      } catch (e) {
+    } catch (e) {
         console.error("Failed to parse queue from local storage", e);
-      }
     }
-  }, []);
+    return [null, null, null, null, null, null];
+  });
 
   // Save to local storage whenever queue changes
   useEffect(() => {

@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React from 'react';
 import { 
   Box, 
   Typography, 
@@ -23,10 +23,48 @@ export const RecordDetails = ({ record }) => {
     const data = record.data || {};
     
     // Normalize data for BillReceipt
-    const billData = {
-        ...record, // id, type, finalAmount, etc
-        ...data,   // stockPlace, paddyType, rates, etc
+    // We must ensure all calculated fields exist, even for old records
+    let billData = {
+        ...record, 
+        ...data, 
     };
+
+    // Fallback Calculations for OLD records that miss these fields
+    if (!billData.grossAmount || !billData.totalLabour) {
+        const entries = data.entries || [];
+        const totWeight = entries.reduce((acc, curr) => acc + (Number(curr.weight)||0), 0);
+        const totBags = entries.reduce((acc, curr) => acc + (Number(curr.bags)||0), 0);
+        
+        const tPerBag = Number(data.tarePerBag) || 2;
+        const calculatedTare = totBags * tPerBag;
+        
+        // If netWeight is missing or matches totalWeight (old behavior), recalculate
+        // But if netWeight exists in DB, use it? safer to re-derive for display consistency if fields are missing
+        const netWt = totWeight - calculatedTare;
+        
+        // Rate
+        const rt = Number(data.rate) || 0;
+        const gross = (netWt / 100) * rt;
+        
+        // Labour: data.labourCharge is likely Rate (e.g. 12)
+        // If totalLabour is missing, calc it.
+        const labRate = Number(data.labourCharge) || 0;
+        const labourTot = totBags * labRate;
+        
+        const afterLab = gross - labourTot;
+
+        billData = {
+            ...billData,
+            totalWeight: data.totalWeight || totWeight,
+            totalBags: data.totalBags || totBags,
+            tareWeight: data.tareWeight || calculatedTare,
+            netWeight: data.netWeight || netWt, // Logic check: if db has netWeight, it might be gross in old records? safer to use derived if we are fixing display
+            grossAmount: data.grossAmount || gross,
+            totalLabour: data.totalLabour || labourTot,
+            netAfterLabour: data.netAfterLabour || afterLab,
+            finalAmount: record.finalAmount || afterLab // Fallback if final missing
+        };
+    }
 
     return (
         <Box>

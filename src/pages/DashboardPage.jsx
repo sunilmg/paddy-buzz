@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { Container, Grid, Paper, Typography, Box, Card, CardContent, Divider, CircularProgress, TextField, MenuItem, Button, Table, TableHead, TableRow, TableCell, TableBody, Chip,TableContainer } from '@mui/material';
+import React, { useEffect, useState, useRef } from 'react';
+import { Container, Grid, Paper, Typography, Box, Card, CardContent, Divider, CircularProgress, TextField, MenuItem, Button, Table, TableHead, TableRow, TableCell, TableBody, Chip, TableContainer, Dialog, DialogTitle, DialogContent, DialogActions } from '@mui/material';
 import { getRecords } from '../api/recordApi';
 import { Navbar } from '../components/Navbar';
 import TrendingUpIcon from '@mui/icons-material/TrendingUp';
@@ -7,6 +7,8 @@ import InventoryIcon from '@mui/icons-material/Inventory';
 import AttachMoneyIcon from '@mui/icons-material/AttachMoney';
 import WarehouseIcon from '@mui/icons-material/Warehouse';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { useReactToPrint } from 'react-to-print';
+import { StockReportTemplate } from '../components/StockReportTemplate';
 
 const StatCard = ({ title, value, subtext, icon, color }) => (
   <Card sx={{ height: '100%', borderLeft: `6px solid ${color}`, boxShadow: 3 }}>
@@ -53,6 +55,136 @@ const DashboardPage = () => {
         tableData: []       // For detailed table
     });
 
+    // Report Printing
+    const reportPrintRef = useRef(null);
+    const [reportConfigOpen, setReportConfigOpen] = useState(false);
+    const [extraDeductionPerBag, setExtraDeductionPerBag] = useState(0); 
+    const [reportData, setReportData] = useState({
+        stockPlace: '',
+        records: [],
+        totals: { totalBags: 0, totalWeight: 0, totalAmount: 0, avgWeightPerBag: 0, netWeightAfterTare: 0, finalAmountAfterDeductions: 0 },
+        deductions: { perBagCharge: 0, totalDeduction: 0, tareDeduction: 0 }
+    });
+
+    const handlePrintReportTrigger = useReactToPrint({
+        contentRef: reportPrintRef,
+        documentTitle: `Stock_Report_${reportData.stockPlace}`,
+    });
+
+    const handleOpenReportConfig = () => {
+        if (stockPlaceFilter === 'All') {
+            alert("Please select a specific Stock Place (Mill or Godan) to print a report.");
+            return;
+        }
+        setReportConfigOpen(true);
+    };
+
+    const handlePrintReportResolved = () => {
+        setReportConfigOpen(false);
+
+        // Filter and Process records with specific calculation logic
+        const reportRecords = records
+            .filter(r => (r.data?.stockPlace || 'Unknown') === stockPlaceFilter)
+            .map(r => {
+                const bags = Number(r.data?.totalBags) || 0;
+                const rate = Number(r.data?.rate) || 0;
+                
+                // Determine Total Labour Cost
+                // Use stored 'totalLabour' if available. 
+                // Fallback: use 'labourCharge' (which is usually rate/bag) * bags.
+                let totalLabourCost = 0;
+                if (r.data?.totalLabour !== undefined) {
+                    totalLabourCost = Number(r.data.totalLabour);
+                } else {
+                    const labourRate = Number(r.data?.labourCharge) || 0;
+                    totalLabourCost = bags * labourRate;
+                }
+
+                // Prefer stored values (Source of Truth), fallback to calc for older records
+                // Stored 'netWeight' is After Tare. Stored 'totalWeight' is Gross.
+                const storedTotalWeight = r.data?.totalWeight !== undefined ? Number(r.data.totalWeight) : undefined;
+                const storedNetWeight = r.data?.netWeight !== undefined ? Number(r.data.netWeight) : undefined;
+                const storedAmount = r.data?.netAfterLabour !== undefined ? Number(r.data.netAfterLabour) : undefined;
+
+                // 1. Original/Gross Weight
+                // If we have totalWeight, use it. Else if we have netWeight (and it's old record where maybe net=total?), use it. 
+                // Actually safer to assume if totalWeight missing, we might need to derive it or fallback.
+                // Let's assume: if totalWeight exists, use it. Else use netWeight as proxy for original (and we deduct tare).
+                let originalWeight = storedTotalWeight;
+                if (originalWeight === undefined) {
+                     originalWeight = Number(r.data?.netWeight) || 0;
+                }
+
+                // 2. Tare Deduction & Net Weight
+                // If we have stored Net Weight, use it directly.
+                let netWeightForCalc = storedNetWeight;
+                let tareWeight = 0;
+
+                if (netWeightForCalc !== undefined) {
+                     tareWeight = originalWeight - netWeightForCalc;
+                } else {
+                     // Fallback Calc
+                     tareWeight = bags * 2; 
+                     netWeightForCalc = originalWeight - tareWeight;
+                }
+
+                // 3. Amount
+                // If we have stored Amount (Net After Labour), use it.
+                let finalRowAmount = storedAmount;
+                
+                if (finalRowAmount === undefined) {
+                     // Fallback Calc
+                     const calculatedAmount = (netWeightForCalc / 100) * rate;
+                     finalRowAmount = calculatedAmount - totalLabourCost;
+                }
+
+                return {
+                    customerName: r.customerName,
+                    bags: bags,
+                    originalWeight: originalWeight,
+                    weight: netWeightForCalc, // Displaying the weight used for calculation
+                    amount: finalRowAmount
+                };
+            });
+
+        const totalBags = reportRecords.reduce((acc, curr) => acc + curr.bags, 0);
+        const totalOriginalWeight = reportRecords.reduce((acc, curr) => acc + curr.originalWeight, 0);
+        const totalCalcWeight = reportRecords.reduce((acc, curr) => acc + curr.weight, 0);
+        const totalAmount = reportRecords.reduce((acc, curr) => acc + curr.amount, 0);
+        
+        const avgWeight = totalBags > 0 ? (totalOriginalWeight / totalBags).toFixed(2) : 0;
+        
+        // Detailed Deductions for Summary
+        const totalTareDeduction = totalOriginalWeight - totalCalcWeight;
+
+        // Extra Charge Deduction (from Dialog)
+        const extraDeductionTotal = totalBags * extraDeductionPerBag;
+        const finalAmountAfterDeductions = totalAmount - extraDeductionTotal;
+
+        setReportData({
+            stockPlace: stockPlaceFilter,
+            records: reportRecords,
+            totals: {
+                totalBags,
+                totalWeight: totalOriginalWeight, // Show Gross in Summary top line
+                totalAmount,
+                avgWeightPerBag: avgWeight,
+                netWeightAfterTare: totalCalcWeight,
+                finalAmountAfterDeductions
+            },
+            deductions: {
+                perBagCharge: extraDeductionPerBag,
+                totalDeduction: extraDeductionTotal,
+                tareDeduction: totalTareDeduction
+            }
+        });
+
+        // Small delay to allow state update before printing
+        setTimeout(() => {
+            handlePrintReportTrigger();
+        }, 100);
+    };
+
     const fetchData = async () => {
         setLoading(true);
          try {
@@ -71,6 +203,7 @@ const DashboardPage = () => {
 
     useEffect(() => {
         fetchData();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []); 
 
     // Re-process when filters/rates/records change
@@ -181,7 +314,7 @@ const DashboardPage = () => {
                     
                     {/* Filters Bar */}
                     <Paper sx={{ p: 2, display: 'flex', gap: 2, alignItems: 'center', flexWrap: 'wrap' }}>
-                         <TextField
+                        <TextField
                             label="Start Date"
                             type="date"
                             size="small"
@@ -197,6 +330,7 @@ const DashboardPage = () => {
                             value={endDate}
                             onChange={(e) => setEndDate(e.target.value)}
                         />
+
                         <TextField
                             select
                             label="Stock Place"
@@ -210,6 +344,17 @@ const DashboardPage = () => {
                             <MenuItem value="Godan">Godan</MenuItem>
                             <MenuItem value="Other">Other</MenuItem>
                         </TextField>
+
+                        <Button 
+                            variant="outlined" 
+                            color="secondary" 
+                            disabled={stockPlaceFilter === 'All'}
+                            onClick={handleOpenReportConfig}
+                            startIcon={<InventoryIcon />}
+                        >
+                            Print Report
+                        </Button>
+                        
                         <Divider orientation="vertical" flexItem />
                         {/* Market Rates */}
                         <Typography variant="subtitle2" color="primary">Market Rates (Per Qtl):</Typography>
@@ -232,10 +377,54 @@ const DashboardPage = () => {
                         <Button variant="contained" onClick={handleApplyFilters}>Refresh</Button>
                     </Paper>
                 </Box>
+                
+                {/* Report Configuration Dialog */}
+                <Dialog open={reportConfigOpen} onClose={() => setReportConfigOpen(false)}>
+                    <DialogTitle>Report Configuration</DialogTitle>
+                    <DialogContent>
+                        <Box sx={{ mt: 1 }}>
+                            <Typography variant="body2" gutterBottom>
+                                Deduction Preferences for Stock Report:
+                            </Typography>
+                             <Typography variant="caption" color="textSecondary" display="block" gutterBottom>
+                                * 2kg Tare weight will be automatically deducted per bag.
+                            </Typography>
+                            <TextField
+                                autoFocus
+                                margin="dense"
+                                label="Extra Deduction Amount (Per Bag)"
+                                type="number"
+                                fullWidth
+                                variant="outlined"
+                                value={extraDeductionPerBag}
+                                onChange={(e) => setExtraDeductionPerBag(Number(e.target.value))}
+                                helperText="This amount will be multiplied by total bags and deducted from the final amount"
+                            />
+                        </Box>
+                    </DialogContent>
+                    <DialogActions>
+                        <Button onClick={() => setReportConfigOpen(false)}>Cancel</Button>
+                        <Button onClick={handlePrintReportResolved} variant="contained" color="primary">
+                            Print Report
+                        </Button>
+                    </DialogActions>
+                </Dialog>
+                
+                {/* Hidden Print Component */}
+                <div style={{ display: 'none' }}>
+                    <StockReportTemplate 
+                        ref={reportPrintRef}
+                        stockPlace={reportData.stockPlace}
+                        records={reportData.records}
+                        totals={reportData.totals}
+                        deductions={reportData.deductions}
+                    />
+                </div>
 
                 {loading && <Box display="flex" justifyContent="center" mb={2}><CircularProgress /></Box>}
 
                 {/* Top Level Cards */}
+
                 <Grid container spacing={3} sx={{ mb: 4 }}>
                     <Grid item xs={12} sm={6} md={3}>
                         <StatCard 

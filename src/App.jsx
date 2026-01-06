@@ -126,6 +126,7 @@ function MainCalculator() {
   const [stockPlace, setStockPlace] = useState("");
   const [paddyType, setPaddyType] = useState("");
   const [paidAmount, setPaidAmount] = useState("");
+  const [finalNotes, setFinalNotes] = useState("");
 
   // --- Tab State ---
   const [tabValue, setTabValue] = useState(0);
@@ -201,6 +202,7 @@ function MainCalculator() {
         setStockPlace(record.data.stockPlace || "");
         setPaddyType(record.data.paddyType || "Shree Ram");
         setPaidAmount(record.data.paidAmount || "");
+        setFinalNotes(record.data.finalNotes || "");
         setPaddyEntries(record.data.entries || []);
         setTarePerBag(record.data.tarePerBag || 2);
         setRate(record.data.rate || "");
@@ -224,6 +226,7 @@ function MainCalculator() {
     setStockPlace([]);
     setPaddyType("");
     setPaidAmount("");
+    setFinalNotes("");
     // Clear router state so refresh doesn't reload edit
     navigate(location.pathname, { replace: true, state: {} });
   };
@@ -266,6 +269,7 @@ function MainCalculator() {
       netAfterLabour: calcs.netAfterLabour,
       adjustments: [...adjustments],
       finalAmount: calcs.finalAmount,
+      finalNotes,
     };
 
     const result = addToPrintQueue(billData);
@@ -325,6 +329,7 @@ function MainCalculator() {
       setStockPlace(item.stockPlace || "");
       setPaddyType(item.paddyType || "Shree Ram");
       setPaidAmount(item.paidAmount || "");
+      setFinalNotes(item.finalNotes || "");
       setPaddyEntries(item.entries || []);
       setTarePerBag(item.tarePerBag || 2);
       setRate(item.rate || "");
@@ -412,9 +417,14 @@ function MainCalculator() {
         labourCharge,
         totalWeight: calcs.totalWeight,
         totalBags: calcs.totalBags,
+        tareWeight: calcs.tareWeight,
         netWeight: calcs.netWeight,
+        grossAmount: calcs.grossAmount,
+        totalLabour: calcs.totalLabour,
+        netAfterLabour: calcs.netAfterLabour,
         entries: paddyEntries,
         adjustments: adjustments,
+        finalNotes,
       };
     }
 
@@ -834,6 +844,25 @@ function MainCalculator() {
                       + Add Charge
                     </Button>
                   </Stack>
+
+                  {/* Final Notes Field */}
+                  <Box sx={{ mt: 3 }}>
+                    <TextField
+                      fullWidth
+                      multiline
+                      rows={2}
+                      label="Final Notes (Optional)"
+                      placeholder="Add any final notes or remarks..."
+                      variant="outlined"
+                      value={finalNotes}
+                      onChange={(e) => setFinalNotes(e.target.value)}
+                      sx={{
+                        '& .MuiOutlinedInput-root': {
+                          bgcolor: '#f5f5f5',
+                        }
+                      }}
+                    />
+                  </Box>
 
                   {/* Live Totals */}
                   <Paper

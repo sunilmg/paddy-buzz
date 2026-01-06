@@ -31,6 +31,7 @@ export const BillReceipt = ({ data, previewMode = false }) => {
     netAfterLabour,
     adjustments,
     finalAmount,
+    finalNotes,
   } = data;
 
   const Wrapper = previewMode ? Box : BillQuadrant;
@@ -142,9 +143,25 @@ export const BillReceipt = ({ data, previewMode = false }) => {
         <span>{formatNum(finalAmount)}</span>
       </BillRow>
       <DoubleSeparator />
-      {/* Footer */}
+      
+      {/* Footer with Final Notes on same line */}
       <BillRow>
-        <span>0000000</span>
+        <span style={{ 
+          display: 'flex', 
+          justifyContent: 'space-between',
+          width: '100%',
+          alignItems: 'center'
+        }}>
+          <span>0000000</span>
+          {finalNotes && (
+            <span style={{
+              fontWeight: "bold",
+              textAlign: "right",
+            }}>
+              {finalNotes}
+            </span>
+          )}
+        </span>
       </BillRow>
     </Wrapper>
   );
