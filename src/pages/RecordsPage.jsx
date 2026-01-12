@@ -26,8 +26,9 @@ import {
   Snackbar,
   Alert,
   Tabs,
-  Tab
-} from '@mui/material';
+  Tab,
+  TableSortLabel
+} from "@mui/material";
 import LocalPrintshopIcon from '@mui/icons-material/LocalPrintshop';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
@@ -72,6 +73,10 @@ const RecordsPage = () => {
   const [paddyTypeFilter, setPaddyTypeFilter] = useState('All');
   const [stockPlaceFilter, setStockPlaceFilter] = useState('All');
 
+  // Sorting
+  const [sortBy, setSortBy] = useState('date');
+  const [sortOrder, setSortOrder] = useState('desc');
+
   // Delete Confirm
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [deleteId, setDeleteId] = useState(null);
@@ -87,7 +92,9 @@ const RecordsPage = () => {
         endDate,
         type,
         paddyType: paddyTypeFilter,
-        stockPlace: stockPlaceFilter
+        stockPlace: stockPlaceFilter,
+        sortBy,
+        sortOrder
       });
       setRecords(data.records);
       setTotalPages(data.totalPages);
@@ -96,7 +103,14 @@ const RecordsPage = () => {
     } finally {
       setLoading(false);
     }
-  }, [page, search, startDate, endDate, type, paddyTypeFilter, stockPlaceFilter]);
+  }, [page, search, startDate, endDate, type, paddyTypeFilter, stockPlaceFilter, sortBy, sortOrder]);
+
+  const handleRequestSort = (property) => {
+    const isAsc = sortBy === property && sortOrder === 'asc';
+    setSortOrder(isAsc ? 'desc' : 'asc');
+    setSortBy(property);
+    setPage(1); // Reset to first page on sort
+  };
 
   useEffect(() => {
     fetchRecords();
@@ -374,19 +388,75 @@ const RecordsPage = () => {
         <Table>
           <TableHead sx={{ bgcolor: '#eee' }}>
             <TableRow>
-              <TableCell>Date</TableCell>
-              <TableCell>Customer Name</TableCell>
+              <TableCell sortDirection={sortBy === 'date' ? sortOrder : false}>
+                <TableSortLabel
+                  active={sortBy === 'date'}
+                  direction={sortBy === 'date' ? sortOrder : 'asc'}
+                  onClick={() => handleRequestSort('date')}
+                >
+                  Date
+                </TableSortLabel>
+              </TableCell>
+              <TableCell sortDirection={sortBy === 'customerName' ? sortOrder : false}>
+                <TableSortLabel
+                  active={sortBy === 'customerName'}
+                  direction={sortBy === 'customerName' ? sortOrder : 'asc'}
+                  onClick={() => handleRequestSort('customerName')}
+                >
+                  Customer Name
+                </TableSortLabel>
+              </TableCell>
               {type === 'paddy' ? (
                 <>
-                    <TableCell>Paddy Type</TableCell>
-                    <TableCell>Stock Place</TableCell>
-                    <TableCell align="center">Bags</TableCell>
-                    <TableCell align="right">Paid (₹)</TableCell>
+                    <TableCell sortDirection={sortBy === 'data.paddyType' ? sortOrder : false}>
+                      <TableSortLabel
+                        active={sortBy === 'data.paddyType'}
+                        direction={sortBy === 'data.paddyType' ? sortOrder : 'asc'}
+                        onClick={() => handleRequestSort('data.paddyType')}
+                      >
+                        Paddy Type
+                      </TableSortLabel>
+                    </TableCell>
+                    <TableCell sortDirection={sortBy === 'data.stockPlace' ? sortOrder : false}>
+                      <TableSortLabel
+                        active={sortBy === 'data.stockPlace'}
+                        direction={sortBy === 'data.stockPlace' ? sortOrder : 'asc'}
+                        onClick={() => handleRequestSort('data.stockPlace')}
+                      >
+                        Stock Place
+                      </TableSortLabel>
+                    </TableCell>
+                    <TableCell align="center" sortDirection={sortBy === 'data.totalBags' ? sortOrder : false}>
+                      <TableSortLabel
+                        active={sortBy === 'data.totalBags'}
+                        direction={sortBy === 'data.totalBags' ? sortOrder : 'asc'}
+                        onClick={() => handleRequestSort('data.totalBags')}
+                      >
+                        Bags
+                      </TableSortLabel>
+                    </TableCell>
+                    <TableCell align="right" sortDirection={sortBy === 'data.paidAmount' ? sortOrder : false}>
+                      <TableSortLabel
+                        active={sortBy === 'data.paidAmount'}
+                        direction={sortBy === 'data.paidAmount' ? sortOrder : 'asc'}
+                        onClick={() => handleRequestSort('data.paidAmount')}
+                      >
+                        Paid (₹)
+                      </TableSortLabel>
+                    </TableCell>
                 </>
               ) : (
                 <TableCell>Type</TableCell>
               )}
-              <TableCell align="right">Payable (₹)</TableCell>
+              <TableCell align="right" sortDirection={sortBy === 'finalAmount' ? sortOrder : false}>
+                <TableSortLabel
+                  active={sortBy === 'finalAmount'}
+                  direction={sortBy === 'finalAmount' ? sortOrder : 'asc'}
+                  onClick={() => handleRequestSort('finalAmount')}
+                >
+                  Payable (₹)
+                </TableSortLabel>
+              </TableCell>
               <TableCell align="center">Actions</TableCell>
             </TableRow>
           </TableHead>

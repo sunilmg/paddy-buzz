@@ -27,6 +27,7 @@ import {
   MenuItem,
   FormControl,
   InputLabel,
+  CssBaseline,
 } from "@mui/material";
 import SaveIcon from "@mui/icons-material/Save";
 import DescriptionIcon from "@mui/icons-material/Description";
@@ -78,6 +79,17 @@ const theme = createTheme({
     h6: { fontWeight: 700 },
   },
   components: {
+    MuiCssBaseline: {
+      styleOverrides: {
+        "input::-webkit-outer-spin-button, input::-webkit-inner-spin-button": {
+          WebkitAppearance: "none",
+          margin: 0,
+        },
+        "input[type=number]": {
+          MozAppearance: "textfield",
+        },
+      },
+    },
     MuiButton: {
       styleOverrides: { root: { borderRadius: 8, fontWeight: "bold" } },
     },
@@ -620,16 +632,7 @@ function MainCalculator() {
                     onChange={(e) => setCustomerName(e.target.value)}
                   />
                 </Grid>
-                <Grid item xs={12} sm={6}>
-                    <TextField
-                        fullWidth
-                        label="Paid Amount"
-                        type="number"
-                        variant="outlined"
-                        value={paidAmount}
-                        onChange={(e) => setPaidAmount(e.target.value)}
-                    />
-                </Grid>
+               
                </Grid>
 
               {/* Paddy Entries */}
@@ -844,25 +847,42 @@ function MainCalculator() {
                       + Add Charge
                     </Button>
                   </Stack>
+                  <Divider sx={{ mb: 2, mt:4 }} textAlign="left" >
+                    <Chip label="Cash Paid / Notes" />
+                  </Divider>
+                   <Grid container spacing={2} sx={{ mt: 3 }}>
 
-                  {/* Final Notes Field */}
-                  <Box sx={{ mt: 3 }}>
-                    <TextField
-                      fullWidth
-                      multiline
-                      rows={2}
-                      label="Final Notes (Optional)"
-                      placeholder="Add any final notes or remarks..."
-                      variant="outlined"
-                      value={finalNotes}
-                      onChange={(e) => setFinalNotes(e.target.value)}
-                      sx={{
-                        '& .MuiOutlinedInput-root': {
-                          bgcolor: '#f5f5f5',
-                        }
-                      }}
-                    />
-                  </Box>
+
+                    
+  <Grid item xs={12} sm={6} >
+    <TextField
+      fullWidth
+      label="Paid Amount"
+      type="number"
+      variant="outlined"
+      value={paidAmount}
+      onChange={(e) => setPaidAmount(e.target.value)}
+    />
+  </Grid>
+  <Grid item xs={12} >
+    <TextField
+      fullWidth
+      label="Final Notes (Optional)"
+      placeholder="Add any final notes or remarks..."
+      variant="outlined"
+      value={finalNotes}
+      onChange={(e) => setFinalNotes(e.target.value)}
+      sx={{
+        width:"20rem",
+        '& .MuiOutlinedInput-root': {
+          bgcolor: '#f5f5f5',
+        },
+      }}
+    />
+  </Grid>
+</Grid>
+
+                  
 
                   {/* Live Totals */}
                   <Paper
@@ -1362,9 +1382,22 @@ function MainCalculator() {
 }
 
 function App() {
+  useEffect(() => {
+    const handleWheel = () => {
+      // If the focused element is a number input, blur it to prevent scroll changes
+      if (document.activeElement && document.activeElement.type === "number") {
+        document.activeElement.blur();
+      }
+    };
+    
+    window.addEventListener("wheel", handleWheel);
+    return () => window.removeEventListener("wheel", handleWheel);
+  }, []);
+
   return (
     <PrintQueueProvider>
         <ThemeProvider theme={theme}>
+        <CssBaseline />
         <Routes>
             <Route path="/" element={<MainCalculator />} />
             <Route path="/records" element={<RecordsPage />} />

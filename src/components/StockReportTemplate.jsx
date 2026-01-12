@@ -71,7 +71,6 @@ export const StockReportTemplate = forwardRef(({ stockPlace, records, totals, de
                              <td style={{ padding: '3px 10px', textAlign: 'right' }}>Total Bags:</td>
                              <td style={{ padding: '3px 10px', border: '1px solid black', width: '100px', textAlign: 'right', fontWeight: 'bold' }}>{totals.totalBags}</td>
                          </tr>
-                         
                          {/* Weight Calculation */}
                          <tr>
                              <td style={{ padding: '3px 10px', textAlign: 'right' }}>Gross Weight (kg):</td>

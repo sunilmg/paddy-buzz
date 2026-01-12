@@ -48,6 +48,7 @@ const DashboardPage = () => {
     
     // Dashboard Filters
     const [stockPlaceFilter, setStockPlaceFilter] = useState('All');
+    const [paddyTypeFilter, setPaddyTypeFilter] = useState('All');
 
     const [stats, setStats] = useState({
         totalStats: { bags: 0, weight: 0, revenue: 0, paid: 0, profit: 0 },
@@ -84,7 +85,11 @@ const DashboardPage = () => {
 
         // Filter and Process records with specific calculation logic
         const reportRecords = records
-            .filter(r => (r.data?.stockPlace || 'Unknown') === stockPlaceFilter)
+            .filter(r => {
+                const placeMatch = stockPlaceFilter === 'All' || r.data?.stockPlace === stockPlaceFilter;
+                const typeMatch = paddyTypeFilter === 'All' || r.data?.paddyType === paddyTypeFilter;
+                return placeMatch && typeMatch;
+            })
             .map(r => {
                 const bags = Number(r.data?.totalBags) || 0;
                 const rate = Number(r.data?.rate) || 0;
@@ -92,12 +97,12 @@ const DashboardPage = () => {
                 // Determine Total Labour Cost
                 // Use stored 'totalLabour' if available. 
                 // Fallback: use 'labourCharge' (which is usually rate/bag) * bags.
-                let totalLabourCost = 0;
+                const labourRatePerBag = Number(r.data?.labourCharge) || 12;
+                let totalLabourCost;
                 if (r.data?.totalLabour !== undefined) {
                     totalLabourCost = Number(r.data.totalLabour);
                 } else {
-                    const labourRate = Number(r.data?.labourCharge) || 0;
-                    totalLabourCost = bags * labourRate;
+                    totalLabourCost = bags * labourRatePerBag;
                 }
 
                 // Prefer stored values (Source of Truth), fallback to calc for older records
@@ -118,14 +123,10 @@ const DashboardPage = () => {
                 // 2. Tare Deduction & Net Weight
                 // If we have stored Net Weight, use it directly.
                 let netWeightForCalc = storedNetWeight;
-                let tareWeight = 0;
 
-                if (netWeightForCalc !== undefined) {
-                     tareWeight = originalWeight - netWeightForCalc;
-                } else {
-                     // Fallback Calc
-                     tareWeight = bags * 2; 
-                     netWeightForCalc = originalWeight - tareWeight;
+                if (netWeightForCalc === undefined) {
+                     // Fallback Calc - No default tare deduction if not explicitly stored
+                     netWeightForCalc = originalWeight; // Assume netWeight is originalWeight if no tare is specified
                 }
 
                 // 3. Amount
@@ -149,33 +150,33 @@ const DashboardPage = () => {
 
         const totalBags = reportRecords.reduce((acc, curr) => acc + curr.bags, 0);
         const totalOriginalWeight = reportRecords.reduce((acc, curr) => acc + curr.originalWeight, 0);
-        const totalCalcWeight = reportRecords.reduce((acc, curr) => acc + curr.weight, 0);
         const totalAmount = reportRecords.reduce((acc, curr) => acc + curr.amount, 0);
         
         const avgWeight = totalBags > 0 ? (totalOriginalWeight / totalBags).toFixed(2) : 0;
         
-        // Detailed Deductions for Summary
-        const totalTareDeduction = totalOriginalWeight - totalCalcWeight;
+        // Report Summary: Explicitly deduct 2kg tare per bag as requested
+        const reportTareDeduction = totalBags * 2;
+        const reportNetWeight = totalOriginalWeight - reportTareDeduction;
 
         // Extra Charge Deduction (from Dialog)
         const extraDeductionTotal = totalBags * extraDeductionPerBag;
         const finalAmountAfterDeductions = totalAmount - extraDeductionTotal;
 
         setReportData({
-            stockPlace: stockPlaceFilter,
+            stockPlace: `${stockPlaceFilter}${paddyTypeFilter !== 'All' ? ' - ' + paddyTypeFilter : ''}`,
             records: reportRecords,
             totals: {
                 totalBags,
                 totalWeight: totalOriginalWeight, // Show Gross in Summary top line
                 totalAmount,
                 avgWeightPerBag: avgWeight,
-                netWeightAfterTare: totalCalcWeight,
+                netWeightAfterTare: reportNetWeight, // Using actual net from bills
                 finalAmountAfterDeductions
             },
             deductions: {
                 perBagCharge: extraDeductionPerBag,
                 totalDeduction: extraDeductionTotal,
-                tareDeduction: totalTareDeduction
+                tareDeduction: reportTareDeduction // 2kg per bag for report
             }
         });
 
@@ -191,6 +192,8 @@ const DashboardPage = () => {
             const params = { limit: 5000, type: 'paddy' };
             if (startDate) params.startDate = startDate;
             if (endDate) params.endDate = endDate;
+            if (paddyTypeFilter !== 'All') params.paddyType = paddyTypeFilter;
+            if (stockPlaceFilter !== 'All') params.stockPlace = stockPlaceFilter;
             
             const res = await getRecords(params);
             setRecords(res.records || []);
@@ -217,9 +220,11 @@ const DashboardPage = () => {
 
         records.forEach(rec => {
              const place = rec.data?.stockPlace || "Unknown";
+             const recType = rec.data?.paddyType || "Unknown";
              
-             // Client-side Stock Place Filter
+             // Client-side Filter
              if (stockPlaceFilter !== 'All' && place !== stockPlaceFilter) return;
+             if (paddyTypeFilter !== 'All' && recType !== paddyTypeFilter) return;
 
             const type = rec.data?.paddyType || "Unknown";
             const bags = Number(rec.data?.totalBags) || 0;
@@ -297,7 +302,7 @@ const DashboardPage = () => {
             tableData: flatTable
         });
 
-    }, [records, marketRates, stockPlaceFilter]); // Only depend on these
+    }, [records, marketRates, stockPlaceFilter, paddyTypeFilter]); // Only depend on these
 
     const handleApplyFilters = () => {
         fetchData();
@@ -345,6 +350,20 @@ const DashboardPage = () => {
                             <MenuItem value="Other">Other</MenuItem>
                         </TextField>
 
+                        <TextField
+                            select
+                            label="Paddy Type"
+                            size="small"
+                            value={paddyTypeFilter}
+                            onChange={(e) => setPaddyTypeFilter(e.target.value)}
+                            sx={{ minWidth: 150 }}
+                        >
+                            <MenuItem value="All">All Types</MenuItem>
+                            <MenuItem value="Shree Ram">Shree Ram</MenuItem>
+                            <MenuItem value="RNR">RNR</MenuItem>
+                            <MenuItem value="Other">Other</MenuItem>
+                        </TextField>
+
                         <Button 
                             variant="outlined" 
                             color="secondary" 
@@ -387,7 +406,7 @@ const DashboardPage = () => {
                                 Deduction Preferences for Stock Report:
                             </Typography>
                              <Typography variant="caption" color="textSecondary" display="block" gutterBottom>
-                                * 2kg Tare weight will be automatically deducted per bag.
+                                * Summary will show 2kg per bag tare deduction.
                             </Typography>
                             <TextField
                                 autoFocus
