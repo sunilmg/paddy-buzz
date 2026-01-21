@@ -70,20 +70,20 @@ export const BillReceipt = ({ data, previewMode = false }) => {
       {entries.length > 1 && <Separator />}
 
       {/* 2. Total Weight & Bags */}
-      <BillRow>
+      <BillRow className="subEntry">
         <span>
           {formatNum(totalWeight)} - {totalBags} ಚೀಲ
         </span>
       </BillRow>
       {/* 3. Tare Calculation */}
-      <BillRow>
+      <BillRow className="subEntry">
         <span>
           {formatNum(tareWeight)} - ಪೆಚ್ಚು ({totalBags} * {tarePerBag})
         </span>
       </BillRow>
       <Separator />
       {/* 4. Net Weight & Rate */}
-      <BillRow>
+      <BillRow className="subEntry">
         <span>
           {parseFloat(netWeight).toFixed(2)} * {rate} ದರ
         </span>
@@ -94,7 +94,7 @@ export const BillReceipt = ({ data, previewMode = false }) => {
         <span>{formatNum(grossAmount)}</span>
       </BillRow>
       {/* 6. Labour Charge */}
-      <BillRow>
+      <BillRow className="subEntry">
         <span>
           {formatNum(totalLabour)} - ಹಮಾಲಿ ({totalBags} * {labourCharge})
         </span>

@@ -87,6 +87,8 @@ export const BillRow = styled.div`
   justify-content: space-between;
   margin-bottom: 2px;
   align-items: center;
+  font-weight: bold;
+  font-size: 14px;
 
   &.header {
     font-weight: bold;
