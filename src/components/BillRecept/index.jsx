@@ -10,12 +10,21 @@ const formatNum = (num) => {
   return `${integerPart}=${parts[1]}`;
 };
 
+const formatEntryDate = (dateStr) => {
+  if (!dateStr) return "";
+  const d = new Date(dateStr);
+  // Guard against invalid dates
+  if (isNaN(d.getTime())) return dateStr;
+  return d.toLocaleDateString("en-GB"); // DD/MM/YYYY
+};
+
 export const BillReceipt = ({ data, previewMode = false }) => {
   if (!data) return null;
 
   const {
     stockPlace,
     paddyType,
+    transactionType,
     customerName,
     date,
     entries, // Now using the full entries array
@@ -34,6 +43,9 @@ export const BillReceipt = ({ data, previewMode = false }) => {
     finalNotes,
   } = data;
 
+  // Only show labour row if there is an actual labour charge value
+  const hasLabour = Number(labourCharge) > 0 && Number(totalLabour) > 0;
+
   const Wrapper = previewMode ? Box : BillQuadrant;
   const wrapperProps = previewMode
     ? {
@@ -48,11 +60,21 @@ export const BillReceipt = ({ data, previewMode = false }) => {
 
   const formattedDate = new Date(date).toLocaleDateString("en-GB");
 
+  // Label for header: show Sale or Purchase if it's a sale
+  const typeLabel = transactionType === "sale" ? "SALE" : null;
+
   return (
     <Wrapper {...wrapperProps}>
       {/* Header */}
       <BillRow className="subEntry">
-        <span> {stockPlace} - {paddyType}</span>
+        <span>
+          {stockPlace} - {paddyType}
+          {typeLabel && (
+            <span style={{ marginLeft: 8, fontWeight: "bold", textTransform: "uppercase" }}>
+              [{typeLabel}]
+            </span>
+          )}
+        </span>
       </BillRow>
       <BillRow className="header">
         <span>{customerName}</span>
@@ -65,6 +87,11 @@ export const BillReceipt = ({ data, previewMode = false }) => {
             <span>
               {entry.weight} - {entry.bags} ಚೀಲ
             </span>
+            {entry.date && (
+              <span style={{ marginLeft: 8, fontSize: "0.85em", opacity: 0.75 }}>
+                {formatEntryDate(entry.date)}
+              </span>
+            )}
           </BillRow>
         ))}
       {entries.length > 1 && <Separator />}
@@ -93,19 +120,21 @@ export const BillReceipt = ({ data, previewMode = false }) => {
       <BillRow className="total">
         <span>{formatNum(grossAmount)}</span>
       </BillRow>
-      {/* 6. Labour Charge */}
-      <BillRow className="subEntry">
-        <span>
-          {formatNum(totalLabour)} - ಹಮಾಲಿ ({totalBags} * {labourCharge})
-        </span>
-      </BillRow>
+      {/* 6. Labour Charge — only shown if there is a labour charge */}
+      {hasLabour && (
+        <BillRow className="subEntry">
+          <span>
+            {formatNum(totalLabour)} - ಹಮಾಲಿ ({totalBags} * {labourCharge})
+          </span>
+        </BillRow>
+      )}
 
       {/* 7. Net After Labour */}
       {adjustments.length > 0 && (
         <>
           <Separator />
           <BillRow>
-            <span>{formatNum(netAfterLabour)}</span>
+            <span>{formatNum(hasLabour ? netAfterLabour : grossAmount)}</span>
           </BillRow>
         </>
       )}
@@ -129,9 +158,6 @@ export const BillReceipt = ({ data, previewMode = false }) => {
                 {adj.note || (adj.type === "sub" ? "Paid by Cash" : "Added")}
               </span>
             </BillRow>
-            {/* Show running total after adjustment if needed, or just list them. 
-                Based on your example, you subtract line by line. 
-            */}
           </React.Fragment>
         ))}
       <Separator />

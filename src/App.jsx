@@ -28,6 +28,8 @@ import {
   FormControl,
   InputLabel,
   CssBaseline,
+  DialogActions,
+  DialogContentText,
 } from "@mui/material";
 import SaveIcon from "@mui/icons-material/Save";
 import DescriptionIcon from "@mui/icons-material/Description";
@@ -128,8 +130,9 @@ function MainCalculator() {
   // --- Form State ---
   const [customerName, setCustomerName] = useState("");
   const [date, setDate] = useState(new Date().toISOString().split("T")[0]);
+  const [transactionType, setTransactionType] = useState("purchase");
   const [paddyEntries, setPaddyEntries] = useState([
-    { id: uuidv4(), weight: "", bags: "" },
+    { id: uuidv4(), weight: "", bags: "", date: new Date().toISOString().split("T")[0] },
   ]);
   const [tarePerBag, setTarePerBag] = useState(2);
   const [rate, setRate] = useState("");
@@ -153,6 +156,24 @@ function MainCalculator() {
 
   // --- Edit Mode State ---
   const [currentRecordId, setCurrentRecordId] = useState(null);
+
+  // --- Confirm Dialog State ---
+  const [confirmDialog, setConfirmDialog] = useState({
+    open: false,
+    title: "",
+    message: "",
+    onConfirm: null,
+  });
+
+  const showConfirm = (title, message, onConfirm) => {
+    setConfirmDialog({ open: true, title, message, onConfirm });
+  };
+
+  const handleConfirmClose = (confirmed) => {
+    const { onConfirm } = confirmDialog;
+    setConfirmDialog({ open: false, title: "", message: "", onConfirm: null });
+    if (confirmed && onConfirm) onConfirm();
+  };
 
   // --- Calculations ---
   const [calcs, setCalcs] = useState({
@@ -211,6 +232,7 @@ function MainCalculator() {
         setIntEntries(record.data.entries || []);
       } else {
         setTabValue(0);
+        setTransactionType(record.data.transactionType || "purchase");
         setStockPlace(record.data.stockPlace || "");
         setPaddyType(record.data.paddyType || "Shree Ram");
         setPaidAmount(record.data.paidAmount || "");
@@ -230,7 +252,8 @@ function MainCalculator() {
   const handleClearForm = () => {
     setCustomerName("");
     setDate(new Date().toISOString().split("T")[0]);
-    setPaddyEntries([{ id: uuidv4(), weight: "", bags: "" }]);
+    setTransactionType("purchase");
+    setPaddyEntries([{ id: uuidv4(), weight: "", bags: "", date: new Date().toISOString().split("T")[0] }]);
     setRate("");
     setAdjustments([]);
     setIntEntries([]);
@@ -267,6 +290,7 @@ function MainCalculator() {
       customerName,
       stockPlace,
       paddyType,
+      transactionType,
       date,
       entries: [...paddyEntries],
       totalWeight: calcs.totalWeight,
@@ -338,6 +362,7 @@ function MainCalculator() {
       setIntEntries(item.entries || []);
     } else {
       setTabValue(0);
+      setTransactionType(item.transactionType || "purchase");
       setStockPlace(item.stockPlace || "");
       setPaddyType(item.paddyType || "Shree Ram");
       setPaidAmount(item.paidAmount || "");
@@ -421,6 +446,7 @@ function MainCalculator() {
       payload.type = "paddy";
       payload.finalAmount = calcs.finalAmount;
       payload.data = {
+        transactionType,
         stockPlace,
         paddyType,
         paidAmount: paidAmount ? Number(paidAmount) : 0,
@@ -442,21 +468,47 @@ function MainCalculator() {
 
     try {
       if (currentRecordId) {
-        if (!confirm("Are you sure you want to update this record?")) return;
-        await updateRecord(currentRecordId, payload);
-        setSnackbar({
-          open: true,
-          message: "Record Updated Successfully!",
-          severity: "success",
-        });
+        showConfirm(
+          "Update Record",
+          "Are you sure you want to update this record?",
+          async () => {
+            try {
+              await updateRecord(currentRecordId, payload);
+              setSnackbar({
+                open: true,
+                message: "Record Updated Successfully!",
+                severity: "success",
+              });
+            } catch (error) {
+              setSnackbar({
+                open: true,
+                message: "Error updating record: " + error.message,
+                severity: "error",
+              });
+            }
+          }
+        );
       } else {
-        if (!confirm("Are you sure you want to save this new record?")) return;
-        await createRecord(payload);
-        setSnackbar({
-          open: true,
-          message: "Record Saved Successfully!",
-          severity: "success",
-        });
+        showConfirm(
+          "Save Record",
+          "Are you sure you want to save this new record?",
+          async () => {
+            try {
+              await createRecord(payload);
+              setSnackbar({
+                open: true,
+                message: "Record Saved Successfully!",
+                severity: "success",
+              });
+            } catch (error) {
+              setSnackbar({
+                open: true,
+                message: "Error saving record: " + error.message,
+                severity: "error",
+              });
+            }
+          }
+        );
       }
     } catch (error) {
       setSnackbar({
@@ -560,6 +612,20 @@ function MainCalculator() {
               </Box>
 
               <Grid container spacing={2}>
+                  <Grid item xs={12} sm={3} minWidth={160}>
+                    <FormControl fullWidth>
+                    <InputLabel id="transaction-type-label">Transaction Type</InputLabel>
+                    <Select
+                        labelId="transaction-type-label"
+                        value={transactionType}
+                        label="Transaction Type"
+                        onChange={(e) => setTransactionType(e.target.value)}
+                    >
+                        <MenuItem value="purchase">Purchase</MenuItem>
+                        <MenuItem value="sale">Sale</MenuItem>
+                    </Select>
+                    </FormControl>
+                </Grid>
                   <Grid item xs={12} sm={3} minWidth={150}>
                     <FormControl fullWidth>
                     <InputLabel id="stock-place-label">Stock Place</InputLabel>
@@ -591,26 +657,7 @@ function MainCalculator() {
                     </Select>
                     </FormControl>
                 </Grid>
-                {/* <Grid item xs={12} sm={6}>
-                  <TextField
-                    fullWidth
-                    label="Customer Name"
-                    variant="outlined"
-                    value={customerName}
-                    onChange={(e) => setCustomerName(e.target.value)}
-                  />
-                </Grid>
-                <Grid item xs={12} sm={6}>
-                    <TextField
-                        fullWidth
-                        label="Paid Amount"
-                        type="number"
-                        variant="outlined"
-                        value={paidAmount}
-                        onChange={(e) => setPaidAmount(e.target.value)}
-                    />
-                </Grid> */}
-                <Grid item xs={12} sm={6}>
+                <Grid item xs={12} sm={3} minWidth={140}>
                   <TextField
                     fullWidth
                     type="date"
@@ -663,11 +710,11 @@ function MainCalculator() {
                     {paddyEntries.map((entry, index) => (
                       <Grid
                         container
-                        spacing={2}
+                        spacing={1.5}
                         key={entry.id}
-                        sx={{ mb: 1.5 }}
+                        sx={{ mb: 1.5, alignItems: 'center' }}
                       >
-                        <Grid item xs={5}>
+                        <Grid item xs={12} sm={3}>
                           <TextField
                             fullWidth
                             size="small"
@@ -681,7 +728,7 @@ function MainCalculator() {
                             }}
                           />
                         </Grid>
-                        <Grid item xs={5}>
+                        <Grid item xs={12} sm={3}>
                           <TextField
                             fullWidth
                             size="small"
@@ -695,7 +742,22 @@ function MainCalculator() {
                             }}
                           />
                         </Grid>
-                        <Grid item xs={2} display="flex" alignItems="center">
+                        <Grid item xs={12} sm={4}>
+                          <TextField
+                            fullWidth
+                            size="small"
+                            label="Entry Date"
+                            type="date"
+                            InputLabelProps={{ shrink: true }}
+                            value={entry.date || date}
+                            onChange={(e) => {
+                              const list = [...paddyEntries];
+                              list[index].date = e.target.value;
+                              setPaddyEntries(list);
+                            }}
+                          />
+                        </Grid>
+                        <Grid item xs={12} sm={2} display="flex" alignItems="center">
                           <IconButton
                             color="error"
                             onClick={() => {
@@ -718,7 +780,7 @@ function MainCalculator() {
                       onClick={() =>
                         setPaddyEntries([
                           ...paddyEntries,
-                          { id: uuidv4(), weight: "", bags: "" },
+                          { id: uuidv4(), weight: "", bags: "", date: new Date().toISOString().split("T")[0] },
                         ])
                       }
                     >
@@ -1377,6 +1439,26 @@ function MainCalculator() {
           {snackbar.message}
         </Alert>
       </Snackbar>
+
+      <Dialog
+        open={confirmDialog.open}
+        onClose={() => handleConfirmClose(false)}
+      >
+        <DialogTitle>{confirmDialog.title}</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            {confirmDialog.message}
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => handleConfirmClose(false)} color="primary">
+            Cancel
+          </Button>
+          <Button onClick={() => handleConfirmClose(true)} color="error" autoFocus>
+            Confirm
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 }

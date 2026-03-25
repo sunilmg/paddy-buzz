@@ -49,6 +49,7 @@ const DashboardPage = () => {
     // Dashboard Filters
     const [stockPlaceFilter, setStockPlaceFilter] = useState('All');
     const [paddyTypeFilter, setPaddyTypeFilter] = useState('All');
+    const [transactionTypeFilter, setTransactionTypeFilter] = useState('All');
 
     const [stats, setStats] = useState({
         totalStats: { bags: 0, weight: 0, revenue: 0, paid: 0, profit: 0 },
@@ -194,6 +195,7 @@ const DashboardPage = () => {
             if (endDate) params.endDate = endDate;
             if (paddyTypeFilter !== 'All') params.paddyType = paddyTypeFilter;
             if (stockPlaceFilter !== 'All') params.stockPlace = stockPlaceFilter;
+            if (transactionTypeFilter !== 'All') params.transactionType = transactionTypeFilter;
             
             const res = await getRecords(params);
             setRecords(res.records || []);
@@ -335,6 +337,19 @@ const DashboardPage = () => {
                             value={endDate}
                             onChange={(e) => setEndDate(e.target.value)}
                         />
+
+                        <TextField
+                            select
+                            label="Transaction Type"
+                            size="small"
+                            value={transactionTypeFilter}
+                            onChange={(e) => setTransactionTypeFilter(e.target.value)}
+                            sx={{ minWidth: 150 }}
+                        >
+                            <MenuItem value="All">All Types</MenuItem>
+                            <MenuItem value="purchase">Purchase</MenuItem>
+                            <MenuItem value="sale">Sale</MenuItem>
+                        </TextField>
 
                         <TextField
                             select

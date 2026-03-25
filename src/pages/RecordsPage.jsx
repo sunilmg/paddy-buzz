@@ -67,6 +67,7 @@ const RecordsPage = () => {
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [type, setType] = useState('paddy');
+  const [transactionTypeFilter, setTransactionTypeFilter] = useState('purchase');
   const [tabValue, setTabValue] = useState(0);
 
   // Additional Filters
@@ -84,7 +85,7 @@ const RecordsPage = () => {
   const fetchRecords = useCallback(async () => {
     setLoading(true);
     try {
-      const data = await getRecords({
+      const params = {
         page,
         limit: 20,
         search,
@@ -95,7 +96,12 @@ const RecordsPage = () => {
         stockPlace: stockPlaceFilter,
         sortBy,
         sortOrder
-      });
+      };
+      // For paddy records, also filter by transactionType
+      if (type === 'paddy') {
+        params.transactionType = transactionTypeFilter;
+      }
+      const data = await getRecords(params);
       setRecords(data.records);
       setTotalPages(data.totalPages);
     } catch (error) {
@@ -103,7 +109,7 @@ const RecordsPage = () => {
     } finally {
       setLoading(false);
     }
-  }, [page, search, startDate, endDate, type, paddyTypeFilter, stockPlaceFilter, sortBy, sortOrder]);
+  }, [page, search, startDate, endDate, type, transactionTypeFilter, paddyTypeFilter, stockPlaceFilter, sortBy, sortOrder]);
 
   const handleRequestSort = (property) => {
     const isAsc = sortBy === property && sortOrder === 'asc';
@@ -118,7 +124,16 @@ const RecordsPage = () => {
 
   const handleTabChange = (event, newValue) => {
     setTabValue(newValue);
-    setType(newValue === 0 ? 'paddy' : 'interest');
+    if (newValue === 0) {
+      setType('paddy');
+      setTransactionTypeFilter('purchase');
+    } else if (newValue === 1) {
+      setType('paddy');
+      setTransactionTypeFilter('sale');
+    } else {
+      setType('interest');
+      setTransactionTypeFilter('purchase');
+    }
     setPage(1);
     setPaddyTypeFilter('All');
     setStockPlaceFilter('All');
@@ -313,7 +328,8 @@ const RecordsPage = () => {
 
         <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 2 }}>
           <Tabs value={tabValue} onChange={handleTabChange} aria-label="record-tabs">
-            <Tab label="Paddy Records" />
+            <Tab label="Purchase Records" />
+            <Tab label="Sale Records" />
             <Tab label="Interest Records" />
           </Tabs>
         </Box>
@@ -408,6 +424,15 @@ const RecordsPage = () => {
               </TableCell>
               {type === 'paddy' ? (
                 <>
+                    <TableCell>
+                      <TableSortLabel
+                        active={sortBy === 'data.transactionType'}
+                        direction={sortBy === 'data.transactionType' ? sortOrder : 'asc'}
+                        onClick={() => handleRequestSort('data.transactionType')}
+                      >
+                        Type
+                      </TableSortLabel>
+                    </TableCell>
                     <TableCell sortDirection={sortBy === 'data.paddyType' ? sortOrder : false}>
                       <TableSortLabel
                         active={sortBy === 'data.paddyType'}
@@ -472,6 +497,14 @@ const RecordsPage = () => {
                 <TableCell>{row.customerName}</TableCell>
                 {type === 'paddy' ? (
                   <>
+                    <TableCell>
+                      <Chip
+                        label={row.data?.transactionType === 'sale' ? 'Sale' : 'Purchase'}
+                        color={row.data?.transactionType === 'sale' ? 'secondary' : 'success'}
+                        size="small"
+                        variant="outlined"
+                      />
+                    </TableCell>
                     <TableCell>{row.data?.paddyType || '-'}</TableCell>
                     <TableCell>{row.data?.stockPlace || '-'}</TableCell>
                     <TableCell align="center">{row.data?.totalBags || '-'}</TableCell>
