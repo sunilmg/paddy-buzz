@@ -375,19 +375,52 @@ function MainCalculator() {
     }
   };
 
-  const handleDragEnd = (event) => {
+  const handleDragEndQueue = (event) => {
     const { active, over } = event;
 
     if (active.id !== over.id) {
-        const oldIndex = printQueue.findIndex(
-          (item, index) => (item?.id ?? `empty-${index}`) === active.id
-        );
-        const newIndex = printQueue.findIndex(
-          (item, index) => (item?.id ?? `empty-${index}`) === over.id
-        );
+      const oldIndex = printQueue.findIndex(
+        (item, index) => (item?.id ?? `empty-${index}`) === active.id
+      );
+      const newIndex = printQueue.findIndex(
+        (item, index) => (item?.id ?? `empty-${index}`) === over.id
+      );
 
-        const newQ = arrayMove(printQueue, oldIndex, newIndex);
-        updateQueue(newQ);
+      const newQ = arrayMove(printQueue, oldIndex, newIndex);
+      updateQueue(newQ);
+    }
+  };
+
+  const handleDragEndPaddyEntries = (event) => {
+    const { active, over } = event;
+    if (active.id !== over.id) {
+        setPaddyEntries((items) => {
+            const oldIndex = items.findIndex((item) => item.id === active.id);
+            const newIndex = items.findIndex((item) => item.id === over.id);
+            return arrayMove(items, oldIndex, newIndex);
+        });
+    }
+  };
+
+  const handleDragEndAdjustments = (event) => {
+    const { active, over } = event;
+    if (active.id !== over.id) {
+        setAdjustments((items) => {
+            const oldIndex = items.findIndex((item) => item.id === active.id);
+            const newIndex = items.findIndex((item) => item.id === over.id);
+            return arrayMove(items, oldIndex, newIndex);
+        });
+    }
+  };
+
+  const handleDragEndIntEntries = (event) => {
+    const { active, over } = event;
+    if (active.id !== over.id) {
+        setIntEntries((items) => {
+            const oldIndex = items.findIndex((item) => item.id === active.id);
+            const newIndex = items.findIndex((item) => item.id === over.id);
+            return arrayMove(items, oldIndex, newIndex);
+        });
     }
   };
 
@@ -707,72 +740,81 @@ function MainCalculator() {
                     >
                       PADDY ENTRIES
                     </Typography>
-                    {paddyEntries.map((entry, index) => (
-                      <Grid
-                        container
-                        spacing={1.5}
-                        key={entry.id}
-                        sx={{ mb: 1.5, alignItems: 'center' }}
-                      >
-                        <Grid item xs={12} sm={3}>
-                          <TextField
-                            fullWidth
-                            size="small"
-                            label={`Weight (kg)`}
-                            type="number"
-                            value={entry.weight}
-                            onChange={(e) => {
-                              const list = [...paddyEntries];
-                              list[index].weight = e.target.value;
-                              setPaddyEntries(list);
-                            }}
-                          />
-                        </Grid>
-                        <Grid item xs={12} sm={3}>
-                          <TextField
-                            fullWidth
-                            size="small"
-                            label="Bags"
-                            type="number"
-                            value={entry.bags}
-                            onChange={(e) => {
-                              const list = [...paddyEntries];
-                              list[index].bags = e.target.value;
-                              setPaddyEntries(list);
-                            }}
-                          />
-                        </Grid>
-                        <Grid item xs={12} sm={4}>
-                          <TextField
-                            fullWidth
-                            size="small"
-                            label="Entry Date"
-                            type="date"
-                            InputLabelProps={{ shrink: true }}
-                            value={entry.date || date}
-                            onChange={(e) => {
-                              const list = [...paddyEntries];
-                              list[index].date = e.target.value;
-                              setPaddyEntries(list);
-                            }}
-                          />
-                        </Grid>
-                        <Grid item xs={12} sm={2} display="flex" alignItems="center">
-                          <IconButton
-                            color="error"
-                            onClick={() => {
-                              if (paddyEntries.length > 1)
-                                setPaddyEntries(
-                                  paddyEntries.filter((p) => p.id !== entry.id)
-                                );
-                            }}
-                            disabled={paddyEntries.length === 1}
-                          >
-                            <DeleteIcon />
-                          </IconButton>
-                        </Grid>
-                      </Grid>
-                    ))}
+                    <DndContext 
+                      sensors={sensors} 
+                      collisionDetection={closestCenter} 
+                      onDragEnd={handleDragEndPaddyEntries}
+                    >
+                      <SortableContext items={paddyEntries.map(e => e.id)}>
+                        {paddyEntries.map((entry, index) => (
+                          <SortableItem key={entry.id} id={entry.id}>
+                            <Grid
+                              container
+                              spacing={1.5}
+                              sx={{ mb: 1.5, alignItems: 'center' }}
+                            >
+                              <Grid item xs={12} sm={3}>
+                                <TextField
+                                  fullWidth
+                                  size="small"
+                                  label={`Weight (kg)`}
+                                  type="number"
+                                  value={entry.weight}
+                                  onChange={(e) => {
+                                    const list = [...paddyEntries];
+                                    list[index].weight = e.target.value;
+                                    setPaddyEntries(list);
+                                  }}
+                                />
+                              </Grid>
+                              <Grid item xs={12} sm={3}>
+                                <TextField
+                                  fullWidth
+                                  size="small"
+                                  label="Bags"
+                                  type="number"
+                                  value={entry.bags}
+                                  onChange={(e) => {
+                                    const list = [...paddyEntries];
+                                    list[index].bags = e.target.value;
+                                    setPaddyEntries(list);
+                                  }}
+                                />
+                              </Grid>
+                              <Grid item xs={12} sm={4}>
+                                <TextField
+                                  fullWidth
+                                  size="small"
+                                  label="Entry Date"
+                                  type="date"
+                                  InputLabelProps={{ shrink: true }}
+                                  value={entry.date || date}
+                                  onChange={(e) => {
+                                    const list = [...paddyEntries];
+                                    list[index].date = e.target.value;
+                                    setPaddyEntries(list);
+                                  }}
+                                />
+                              </Grid>
+                              <Grid item xs={12} sm={2} display="flex" alignItems="center">
+                                <IconButton
+                                  color="error"
+                                  onClick={() => {
+                                    if (paddyEntries.length > 1)
+                                      setPaddyEntries(
+                                        paddyEntries.filter((p) => p.id !== entry.id)
+                                      );
+                                  }}
+                                  disabled={paddyEntries.length === 1}
+                                >
+                                  <DeleteIcon />
+                                </IconButton>
+                              </Grid>
+                            </Grid>
+                          </SortableItem>
+                        ))}
+                      </SortableContext>
+                    </DndContext>
                     <Button
                       startIcon={<AddCircleIcon />}
                       size="small"
@@ -825,61 +867,76 @@ function MainCalculator() {
                   <Divider sx={{ mb: 2 }} textAlign="left">
                     <Chip label="Adjustments / Cash" />
                   </Divider>
-                  {adjustments.map((adj, index) => (
-                    <Grid
-                      container
-                      spacing={1}
-                      key={adj.id}
-                      sx={{ mb: 1, alignItems: "center" }}
-                    >
-                      <Grid item xs={2}>
-                        <Chip
-                          label={adj.type === "add" ? "+" : "-"}
-                          color={adj.type === "add" ? "success" : "warning"}
-                          size="small"
-                        />
-                      </Grid>
-                      <Grid item xs={4}>
-                        <TextField
-                          fullWidth
-                          size="small"
-                          label="Amount"
-                          type="number"
-                          value={adj.amount}
-                          onChange={(e) => {
-                            const list = [...adjustments];
-                            list[index].amount = e.target.value;
-                            setAdjustments(list);
-                          }}
-                        />
-                      </Grid>
-                      <Grid item xs={5}>
-                        <TextField
-                          fullWidth
-                          size="small"
-                          label="Note (e.g. Paid Cash)"
-                          value={adj.note}
-                          onChange={(e) => {
-                            const list = [...adjustments];
-                            list[index].note = e.target.value;
-                            setAdjustments(list);
-                          }}
-                        />
-                      </Grid>
-                      <Grid item xs={1}>
-                        <IconButton
-                          size="small"
-                          onClick={() =>
-                            setAdjustments(
-                              adjustments.filter((a) => a.id !== adj.id)
-                            )
-                          }
-                        >
-                          <RemoveCircleOutlineIcon />
-                        </IconButton>
-                      </Grid>
-                    </Grid>
-                  ))}
+                  <DndContext 
+                    sensors={sensors} 
+                    collisionDetection={closestCenter} 
+                    onDragEnd={handleDragEndAdjustments}
+                  >
+                    <SortableContext items={adjustments.map(a => a.id)}>
+                      {adjustments.map((adj, index) => (
+                        <SortableItem key={adj.id} id={adj.id}>
+                          <Grid
+                            container
+                            spacing={1}
+                            sx={{ mb: 1, alignItems: "center" }}
+                          >
+                            <Grid item xs={2}>
+                              <Chip
+                                label={adj.type === "add" ? "+" : "-"}
+                                color={adj.type === "add" ? "success" : "warning"}
+                                size="small"
+                                onClick={() => {
+                                  const list = [...adjustments];
+                                  list[index].type = list[index].type === "add" ? "sub" : "add";
+                                  setAdjustments(list);
+                                }}
+                                sx={{ cursor: 'pointer' }}
+                              />
+                            </Grid>
+                            <Grid item xs={4}>
+                              <TextField
+                                fullWidth
+                                size="small"
+                                label="Amount"
+                                type="number"
+                                value={adj.amount}
+                                onChange={(e) => {
+                                  const list = [...adjustments];
+                                  list[index].amount = e.target.value;
+                                  setAdjustments(list);
+                                }}
+                              />
+                            </Grid>
+                            <Grid item xs={5}>
+                              <TextField
+                                fullWidth
+                                size="small"
+                                label="Note (e.g. Paid Cash)"
+                                value={adj.note}
+                                onChange={(e) => {
+                                  const list = [...adjustments];
+                                  list[index].note = e.target.value;
+                                  setAdjustments(list);
+                                }}
+                              />
+                            </Grid>
+                            <Grid item xs={1}>
+                              <IconButton
+                                size="small"
+                                onClick={() =>
+                                  setAdjustments(
+                                    adjustments.filter((a) => a.id !== adj.id)
+                                  )
+                                }
+                              >
+                                <RemoveCircleOutlineIcon />
+                              </IconButton>
+                            </Grid>
+                          </Grid>
+                        </SortableItem>
+                      ))}
+                    </SortableContext>
+                  </DndContext>
 
                   <Stack direction="row" spacing={1} sx={{ mt: 1 }}>
                     <Button
@@ -1034,104 +1091,118 @@ function MainCalculator() {
                       </Typography>
 
                       {/* Entries List */}
-                      {intEntries.map((entry, index) => (
-                        <React.Fragment key={entry.id}>
-                          {entry.type === "sum" ? (
-                            <Box
-                              sx={{
-                                my: 2,
-                                borderTop: "2px dashed #795548",
-                                display: "flex",
-                                justifyContent: "center",
-                                position: "relative",
-                              }}
-                            >
-                              <Chip
-                                label="Calculation Point (Sum)"
-                                size="small"
-                                sx={{
-                                  position: "absolute",
-                                  top: -12,
-                                  bgcolor: "#fff3e0",
-                                }}
-                              />
-                              <IconButton
-                                size="small"
-                                color="error"
-                                onClick={() =>
-                                  setIntEntries(
-                                    intEntries.filter((e) => e.id !== entry.id)
-                                  )
-                                }
-                                sx={{
-                                  position: "absolute",
-                                  right: 0,
-                                  top: -20,
-                                }}
-                              >
-                                <RemoveCircleOutlineIcon />
-                              </IconButton>
-                            </Box>
-                          ) : (
-                            <Grid
-                              container
-                              spacing={1}
-                              sx={{ mb: 1, alignItems: "center" }}
-                            >
-                              <Grid item xs={2}>
-                                <Chip
-                                  label={entry.type === "add" ? "+" : "-"}
-                                  color={
-                                    entry.type === "add" ? "success" : "warning"
-                                  }
-                                  size="small"
-                                />
-                              </Grid>
-                              <Grid item xs={4}>
-                                <TextField
-                                  size="small"
-                                  label="Amount"
-                                  type="number"
-                                  value={entry.amount}
-                                  onChange={(e) => {
-                                    const list = [...intEntries];
-                                    list[index].amount = e.target.value;
-                                    setIntEntries(list);
+                      <DndContext 
+                        sensors={sensors} 
+                        collisionDetection={closestCenter} 
+                        onDragEnd={handleDragEndIntEntries}
+                      >
+                        <SortableContext items={intEntries.map(e => e.id)}>
+                          {intEntries.map((entry, index) => (
+                            <SortableItem key={entry.id} id={entry.id}>
+                              {entry.type === "sum" ? (
+                                <Box
+                                  sx={{
+                                    my: 2,
+                                    borderTop: "2px dashed #795548",
+                                    display: "flex",
+                                    justifyContent: "center",
+                                    position: "relative",
                                   }}
-                                  fullWidth
-                                />
-                              </Grid>
-                              <Grid item xs={5}>
-                                <TextField
-                                  size="small"
-                                  label="Note"
-                                  value={entry.note}
-                                  onChange={(e) => {
-                                    const list = [...intEntries];
-                                    list[index].note = e.target.value;
-                                    setIntEntries(list);
-                                  }}
-                                  fullWidth
-                                />
-                              </Grid>
-                              <Grid item xs={1}>
-                                <IconButton
-                                  size="small"
-                                  onClick={() =>
-                                    setIntEntries(
-                                      intEntries.filter(
-                                        (e) => e.id !== entry.id
-                                      )
-                                    )
-                                  }
                                 >
-                                  <RemoveCircleOutlineIcon />
-                                </IconButton>
-                              </Grid>
-                            </Grid>
-                          )}
-                        </React.Fragment>
-                      ))}
+                                  <Chip
+                                    label="Calculation Point (Sum)"
+                                    size="small"
+                                    sx={{
+                                      position: "absolute",
+                                      top: -12,
+                                      bgcolor: "#fff3e0",
+                                    }}
+                                  />
+                                  <IconButton
+                                    size="small"
+                                    color="error"
+                                    onClick={() =>
+                                      setIntEntries(
+                                        intEntries.filter((e) => e.id !== entry.id)
+                                      )
+                                    }
+                                    sx={{
+                                      position: "absolute",
+                                      right: 0,
+                                      top: -20,
+                                    }}
+                                  >
+                                    <RemoveCircleOutlineIcon />
+                                  </IconButton>
+                                </Box>
+                              ) : (
+                                <Grid
+                                  container
+                                  spacing={1}
+                                  sx={{ mb: 1, alignItems: "center" }}
+                                >
+                                  <Grid item xs={2}>
+                                    <Chip
+                                      label={entry.type === "add" ? "+" : "-"}
+                                      color={
+                                        entry.type === "add" ? "success" : "warning"
+                                      }
+                                      size="small"
+                                      onClick={() => {
+                                        const list = [...intEntries];
+                                        list[index].type = list[index].type === "add" ? "sub" : "add";
+                                        setIntEntries(list);
+                                      }}
+                                      sx={{ cursor: 'pointer' }}
+                                    />
+                                  </Grid>
+                                  <Grid item xs={4}>
+                                    <TextField
+                                      size="small"
+                                      label="Amount"
+                                      type="number"
+                                      value={entry.amount}
+                                      onChange={(e) => {
+                                        const list = [...intEntries];
+                                        list[index].amount = e.target.value;
+                                        setIntEntries(list);
+                                      }}
+                                      fullWidth
+                                    />
+                                  </Grid>
+                                  <Grid item xs={5}>
+                                    <TextField
+                                      size="small"
+                                      label="Note"
+                                      value={entry.note}
+                                      onChange={(e) => {
+                                        const list = [...intEntries];
+                                        list[index].note = e.target.value;
+                                        setIntEntries(list);
+                                      }}
+                                      fullWidth
+                                    />
+                                  </Grid>
+                                  <Grid item xs={1}>
+                                    <IconButton
+                                      size="small"
+                                      onClick={() =>
+                                        setIntEntries(
+                                          intEntries.filter(
+                                            (e) => e.id !== entry.id
+                                          )
+                                        )
+                                      }
+                                    >
+                                      <RemoveCircleOutlineIcon />
+                                    </IconButton>
+                                  </Grid>
+                                </Grid>
+                              )}
+                            </SortableItem>
+                          ))}
+                        </SortableContext>
+                      </DndContext>
 
                       <Stack direction="row" spacing={1} sx={{ mt: 1 }}>
                         <Button
@@ -1284,7 +1355,7 @@ function MainCalculator() {
               <DndContext
                 sensors={sensors}
                 collisionDetection={closestCenter}
-                onDragEnd={handleDragEnd}
+                onDragEnd={handleDragEndQueue}
               >
                 <SortableContext
                   items={printQueue.map(

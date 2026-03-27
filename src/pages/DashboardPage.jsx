@@ -53,6 +53,8 @@ const DashboardPage = () => {
 
     const [stats, setStats] = useState({
         totalStats: { bags: 0, weight: 0, revenue: 0, paid: 0, profit: 0 },
+        purchaseStats: { revenue: 0, paid: 0 },
+        saleStats: { revenue: 0, paid: 0 },
         stockPlaceData: [], // For charts
         tableData: []       // For detailed table
     });
@@ -218,11 +220,14 @@ const DashboardPage = () => {
         // Grouping Data
         // Key: StockPlace -> SubKey: PaddyType
         const grouped = {};
-        let grandTotal = { bags: 0, weight: 0, revenue: 0, paid: 0, profit: 0 };
+        let grandTotal = { bags: 0, weight: 0, revenue: 0, paid: 0, profit: 0, purchaseBags: 0, saleBags: 0 };
+        let purchaseStats = { revenue: 0, paid: 0, weight: 0, bags: 0 };
+        let saleStats = { revenue: 0, paid: 0, weight: 0, bags: 0 };
 
         records.forEach(rec => {
              const place = rec.data?.stockPlace || "Unknown";
              const recType = rec.data?.paddyType || "Unknown";
+             const isSale = rec.data?.transactionType === 'sale';
              
              // Client-side Filter
              if (stockPlaceFilter !== 'All' && place !== stockPlaceFilter) return;
@@ -231,40 +236,73 @@ const DashboardPage = () => {
             const type = rec.data?.paddyType || "Unknown";
             const bags = Number(rec.data?.totalBags) || 0;
             const weight = Number(rec.data?.netWeight) || 0;
-            const revenue = Number(rec.finalAmount) || 0; // Payable
+            const revenue = Number(rec.finalAmount) || 0;
             const paid = Number(rec.data?.paidAmount) || 0;
-            const purchaseRate = Number(rec.data?.rate) || 0;
             
-            // Calculate Profit if market rate available for this type
-            let profit = 0;
-            const mRate = Number(marketRates[type]);
-            if (mRate > 0) {
-                 const diff = mRate - purchaseRate; 
-                 const weightInQuintals = weight / 100;
-                 profit = weightInQuintals * diff;
+            if (isSale) {
+                saleStats.revenue += revenue;
+                saleStats.paid += paid;
+                saleStats.weight += weight;
+                saleStats.bags += bags;
+                grandTotal.saleBags += bags;
+            } else {
+                purchaseStats.revenue += revenue;
+                purchaseStats.paid += paid;
+                purchaseStats.weight += weight;
+                purchaseStats.bags += bags;
+                grandTotal.purchaseBags += bags;
             }
 
             // Init Place
             if (!grouped[place]) grouped[place] = {};
             // Init Type within Place
             if (!grouped[place][type]) {
-                grouped[place][type] = { bags: 0, weight: 0, revenue: 0, paid: 0, profit: 0, count: 0 };
+                grouped[place][type] = { 
+                    bags: 0, weight: 0, 
+                    purchaseBags: 0, purchaseWeight: 0, purchaseValue: 0,
+                    saleBags: 0, saleWeight: 0, saleValue: 0,
+                    revenue: 0, paid: 0, count: 0 
+                };
             }
 
             // Aggregation
             const target = grouped[place][type];
-            target.bags += bags;
-            target.weight += weight;
-            target.revenue += revenue;
+            if (isSale) {
+                target.bags -= bags;
+                target.weight -= weight;
+                target.saleBags += bags;
+                target.saleWeight += weight;
+                target.saleValue += revenue;
+                grandTotal.bags -= bags;
+                grandTotal.weight -= weight;
+            } else {
+                target.bags += bags;
+                target.weight += weight;
+                target.purchaseBags += bags;
+                target.purchaseWeight += weight;
+                target.purchaseValue += revenue;
+                grandTotal.bags += bags;
+                grandTotal.weight += weight;
+            }
+            target.revenue += revenue; // This would be mixed if we are not careful, but target.saleValue/purchaseValue is better
             target.paid += paid;
-            target.profit += profit;
             target.count += 1;
 
-            grandTotal.bags += bags;
-            grandTotal.weight += weight;
             grandTotal.revenue += revenue;
             grandTotal.paid += paid;
-            grandTotal.profit += profit;
+        });
+
+        // Second Pass: Calculate Profit based on (SaleValue + (Inventory * MarketRate) - PurchaseValue)
+        Object.keys(grouped).forEach(place => {
+            Object.keys(grouped[place]).forEach(type => {
+                const target = grouped[place][type];
+                const mRate = Number(marketRates[type]) || 0;
+                const inventoryValue = (target.weight / 100) * mRate;
+                
+                // Profit = (What we sold it for) + (What the rest is worth now) - (What we spent to get it)
+                target.profit = (target.saleValue + inventoryValue) - target.purchaseValue;
+                grandTotal.profit += target.profit;
+            });
         });
 
         // Prepare Chart Data: Stock Place Groups
@@ -300,6 +338,8 @@ const DashboardPage = () => {
 
         setStats({
             totalStats: grandTotal,
+            purchaseStats,
+            saleStats,
             stockPlaceData: chartData,
             tableData: flatTable
         });
@@ -462,36 +502,36 @@ const DashboardPage = () => {
                 <Grid container spacing={3} sx={{ mb: 4 }}>
                     <Grid item xs={12} sm={6} md={3}>
                         <StatCard 
-                            title="Total Stock" 
+                            title="Total Stock (Balance)" 
                             value={`${stats.totalStats.bags.toLocaleString()} Bags`}
-                            subtext={`${(stats.totalStats.weight/100).toFixed(2)} Quintals`}
+                            subtext={`In: ${stats.totalStats.purchaseBags} / Out: ${stats.totalStats.saleBags}`}
                             icon={<InventoryIcon color="primary" />}
                             color="#1976d2"
                         />
                     </Grid>
                     <Grid item xs={12} sm={6} md={3}>
                        <StatCard 
-                            title="Payments Made" 
-                            value={`₹${stats.totalStats.paid.toLocaleString()}`} 
-                            subtext={`Total Revenue: ₹${stats.totalStats.revenue.toLocaleString()}`}
-                            icon={<TrendingUpIcon color="success" />}
-                            color="#2e7d32"
-                        />
-                    </Grid>
-                    <Grid item xs={12} sm={6} md={3}>
-                        <StatCard 
-                            title="Pending Amount" 
-                            value={`₹${(stats.totalStats.revenue - stats.totalStats.paid).toLocaleString()}`} 
-                            subtext="To be paid"
+                            title="Pending Payables" 
+                            value={`₹${(stats.purchaseStats.revenue - stats.purchaseStats.paid).toLocaleString()}`} 
+                            subtext={`Total Spent: ₹${stats.purchaseStats.revenue.toLocaleString()}`}
                             icon={<AttachMoneyIcon color="warning" />}
                             color="#ed6c02"
                         />
                     </Grid>
+                    <Grid item xs={12} sm={6} md={3}>
+                        <StatCard 
+                            title="Incoming (Sales)" 
+                            value={`₹${(stats.saleStats.revenue - stats.saleStats.paid).toLocaleString()}`} 
+                            subtext={`Total Sales: ₹${stats.saleStats.revenue.toLocaleString()}`}
+                            icon={<TrendingUpIcon color="success" />}
+                            color="#2e7d32"
+                        />
+                    </Grid>
                      <Grid item xs={12} sm={6} md={3}>
                         <StatCard 
-                            title="Projected P/L" 
+                            title="Estimated Net P/L" 
                             value={`₹${Math.round(stats.totalStats.profit).toLocaleString()}`} 
-                            subtext="Based on Market Rates"
+                            subtext="Includes Inventory Value"
                             icon={<AttachMoneyIcon color={stats.totalStats.profit >= 0 ? "success" : "error"} />}
                             color={stats.totalStats.profit >= 0 ? "#2e7d32" : "#d32f2f"}
                         />
@@ -558,34 +598,39 @@ const DashboardPage = () => {
                     <TableContainer sx={{ maxHeight: 600 }}>
                         <Table stickyHeader>
                             <TableHead>
-                                <TableRow>
-                                    <TableCell>Stock Place</TableCell>
-                                    <TableCell>Paddy Type</TableCell>
-                                    <TableCell align="right">Bags</TableCell>
-                                    <TableCell align="right">Weight (Qtl)</TableCell>
-                                    <TableCell align="right">Total Value</TableCell>
-                                    <TableCell align="right">Paid</TableCell>
-                                    <TableCell align="right">Remaining</TableCell>
-                                    <TableCell align="right">Projected P/L</TableCell>
+                                <TableRow sx={{ bgcolor: 'rgba(0, 0, 0, 0.04)' }}>
+                                    <TableCell sx={{ fontWeight: 'bold' }}>Stock Place</TableCell>
+                                    <TableCell sx={{ fontWeight: 'bold' }}>Paddy Type</TableCell>
+                                    <TableCell align="right" sx={{ fontWeight: 'bold' }}>Purchased</TableCell>
+                                    <TableCell align="right" sx={{ fontWeight: 'bold' }}>Sold</TableCell>
+                                    <TableCell align="right" sx={{ fontWeight: 'bold', color: 'primary.main' }}>Stock Balance</TableCell>
+                                    <TableCell align="right" sx={{ fontWeight: 'bold' }}>Estimated Value</TableCell>
+                                    <TableCell align="right" sx={{ fontWeight: 'bold' }}>Net P/L</TableCell>
                                 </TableRow>
                             </TableHead>
                             <TableBody>
-                                {stats.tableData.map((row, idx) => (
+                                {stats.tableData.map((row, idx) => {
+                                    const mRate = Number(marketRates[row.type]) || 0;
+                                    const remValue = (row.weight / 100) * mRate;
+                                    return (
                                     <TableRow key={idx} hover>
                                         <TableCell sx={{ fontWeight: 'bold' }}>{row.place}</TableCell>
                                         <TableCell>
                                             <Chip label={row.type} size="small" color={row.type === 'Shree Ram' ? 'primary' : 'info'} variant="outlined"/>
                                         </TableCell>
-                                        <TableCell align="right">{row.bags.toLocaleString()}</TableCell>
-                                        <TableCell align="right">{(row.weight/100).toLocaleString()}</TableCell>
-                                        <TableCell align="right">₹{row.revenue.toLocaleString()}</TableCell>
-                                        <TableCell align="right" sx={{ color: 'success.main' }}>₹{row.paid.toLocaleString()}</TableCell>
-                                        <TableCell align="right" sx={{ color: 'warning.main' }}>₹{(row.revenue - row.paid).toLocaleString()}</TableCell>
-                                        <TableCell align="right" sx={{ color: row.profit >= 0 ? 'success.main' : 'error.main', fontWeight: 'bold' }}>
+                                        <TableCell align="right">{row.purchaseBags} Bags</TableCell>
+                                        <TableCell align="right">{row.saleBags} Bags</TableCell>
+                                        <TableCell align="right" sx={{ fontWeight: 'bold' }}>{row.bags} Bags</TableCell>
+                                        <TableCell align="right">₹{remValue.toLocaleString()}</TableCell>
+                                        <TableCell align="right" sx={{ 
+                                            fontWeight: 'bold', 
+                                            color: row.profit >= 0 ? 'success.main' : 'error.main' 
+                                        }}>
                                             ₹{Math.round(row.profit).toLocaleString()}
                                         </TableCell>
                                     </TableRow>
-                                ))}
+                                    );
+                                })}
                                 {stats.tableData.length === 0 && (
                                      <TableRow>
                                         <TableCell colSpan={8} align="center">No data found</TableCell>
