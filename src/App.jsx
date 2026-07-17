@@ -30,6 +30,9 @@ import {
   CssBaseline,
   DialogActions,
   DialogContentText,
+  Radio,
+  RadioGroup,
+  FormControlLabel,
 } from "@mui/material";
 import SaveIcon from "@mui/icons-material/Save";
 import DescriptionIcon from "@mui/icons-material/Description";
@@ -41,6 +44,7 @@ import RestartAltIcon from "@mui/icons-material/RestartAlt";
 import ClearAllIcon from "@mui/icons-material/ClearAll";
 import RemoveCircleOutlineIcon from "@mui/icons-material/RemoveCircleOutline";
 import EditIcon from "@mui/icons-material/Edit";
+import DragIndicatorIcon from "@mui/icons-material/DragIndicator";
 import { useReactToPrint } from "react-to-print";
 import { PrintTemplate } from "./pages/billing/PrintTemplate";
 import { BillReceipt } from "./components/BillRecept";
@@ -121,7 +125,7 @@ function MainCalculator() {
     }),
     useSensor(KeyboardSensor, {
       coordinateGetter: sortableKeyboardCoordinates,
-    })
+    }),
   );
 
   // --- Refs ---
@@ -132,7 +136,12 @@ function MainCalculator() {
   const [date, setDate] = useState(new Date().toISOString().split("T")[0]);
   const [transactionType, setTransactionType] = useState("purchase");
   const [paddyEntries, setPaddyEntries] = useState([
-    { id: uuidv4(), weight: "", bags: "", date: new Date().toISOString().split("T")[0] },
+    {
+      id: uuidv4(),
+      weight: "",
+      bags: "",
+      date: new Date().toISOString().split("T")[0],
+    },
   ]);
   const [tarePerBag, setTarePerBag] = useState(2);
   const [rate, setRate] = useState("");
@@ -148,11 +157,29 @@ function MainCalculator() {
 
   // --- Interest Form State ---
   const [intEntries, setIntEntries] = useState([]);
+  const [interestPrincipal, setInterestPrincipal] = useState("");
+  const [interestRate, setInterestRate] = useState("");
+  const [interestFromDate, setInterestFromDate] = useState(
+    new Date().toISOString().split("T")[0],
+  );
+  const [interestToDate, setInterestToDate] = useState(
+    new Date().toISOString().split("T")[0],
+  );
+  const [interestType, setInterestType] = useState("simple");
+  const [interestCalcResult, setInterestCalcResult] = useState(null);
+  const [interestAddMode, setInterestAddMode] = useState("add"); // 'add' or 'sub'
 
   // --- Queue State ---
-  const { printQueue, addToPrintQueue, removeFromQueue: ctxRemoveFromQueue, clearQueue, updateQueue } = usePrintQueue();
+  const {
+    printQueue,
+    addToPrintQueue,
+    removeFromQueue: ctxRemoveFromQueue,
+    clearQueue,
+    updateQueue,
+  } = usePrintQueue();
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedBill, setSelectedBill] = useState(null);
+  const previewRef = useRef(null);
 
   // --- Edit Mode State ---
   const [currentRecordId, setCurrentRecordId] = useState(null);
@@ -253,10 +280,23 @@ function MainCalculator() {
     setCustomerName("");
     setDate(new Date().toISOString().split("T")[0]);
     setTransactionType("purchase");
-    setPaddyEntries([{ id: uuidv4(), weight: "", bags: "", date: new Date().toISOString().split("T")[0] }]);
+    setPaddyEntries([
+      {
+        id: uuidv4(),
+        weight: "",
+        bags: "",
+        date: new Date().toISOString().split("T")[0],
+      },
+    ]);
     setRate("");
     setAdjustments([]);
     setIntEntries([]);
+    setInterestPrincipal("");
+    setInterestRate("");
+    setInterestFromDate(new Date().toISOString().split("T")[0]);
+    setInterestToDate(new Date().toISOString().split("T")[0]);
+    setInterestType("simple");
+    setInterestCalcResult(null);
     setCurrentRecordId(null);
     setStockPlace([]);
     setPaddyType("");
@@ -266,8 +306,7 @@ function MainCalculator() {
     navigate(location.pathname, { replace: true, state: {} });
   };
 
-  const handleClearQueue = () =>
-    clearQueue();
+  const handleClearQueue = () => clearQueue();
 
   const addToQueue = () => {
     if (!customerName || !rate) {
@@ -276,13 +315,13 @@ function MainCalculator() {
     }
 
     if (!paddyType) {
-        alert("Please select Paddy Type");
-        return;
+      alert("Please select Paddy Type");
+      return;
     }
 
     if (!stockPlace) {
-        alert("Please select Stock Place");
-        return;
+      alert("Please select Stock Place");
+      return;
     }
 
     const billData = {
@@ -380,10 +419,10 @@ function MainCalculator() {
 
     if (active.id !== over.id) {
       const oldIndex = printQueue.findIndex(
-        (item, index) => (item?.id ?? `empty-${index}`) === active.id
+        (item, index) => (item?.id ?? `empty-${index}`) === active.id,
       );
       const newIndex = printQueue.findIndex(
-        (item, index) => (item?.id ?? `empty-${index}`) === over.id
+        (item, index) => (item?.id ?? `empty-${index}`) === over.id,
       );
 
       const newQ = arrayMove(printQueue, oldIndex, newIndex);
@@ -394,33 +433,33 @@ function MainCalculator() {
   const handleDragEndPaddyEntries = (event) => {
     const { active, over } = event;
     if (active.id !== over.id) {
-        setPaddyEntries((items) => {
-            const oldIndex = items.findIndex((item) => item.id === active.id);
-            const newIndex = items.findIndex((item) => item.id === over.id);
-            return arrayMove(items, oldIndex, newIndex);
-        });
+      setPaddyEntries((items) => {
+        const oldIndex = items.findIndex((item) => item.id === active.id);
+        const newIndex = items.findIndex((item) => item.id === over.id);
+        return arrayMove(items, oldIndex, newIndex);
+      });
     }
   };
 
   const handleDragEndAdjustments = (event) => {
     const { active, over } = event;
     if (active.id !== over.id) {
-        setAdjustments((items) => {
-            const oldIndex = items.findIndex((item) => item.id === active.id);
-            const newIndex = items.findIndex((item) => item.id === over.id);
-            return arrayMove(items, oldIndex, newIndex);
-        });
+      setAdjustments((items) => {
+        const oldIndex = items.findIndex((item) => item.id === active.id);
+        const newIndex = items.findIndex((item) => item.id === over.id);
+        return arrayMove(items, oldIndex, newIndex);
+      });
     }
   };
 
   const handleDragEndIntEntries = (event) => {
     const { active, over } = event;
     if (active.id !== over.id) {
-        setIntEntries((items) => {
-            const oldIndex = items.findIndex((item) => item.id === active.id);
-            const newIndex = items.findIndex((item) => item.id === over.id);
-            return arrayMove(items, oldIndex, newIndex);
-        });
+      setIntEntries((items) => {
+        const oldIndex = items.findIndex((item) => item.id === active.id);
+        const newIndex = items.findIndex((item) => item.id === over.id);
+        return arrayMove(items, oldIndex, newIndex);
+      });
     }
   };
 
@@ -470,9 +509,9 @@ function MainCalculator() {
       }
       if (!paddyType) {
         setSnackbar({
-            open: true,
-            message: "Paddy Type is required",
-            severity: "error",
+          open: true,
+          message: "Paddy Type is required",
+          severity: "error",
         });
         return;
       }
@@ -519,7 +558,7 @@ function MainCalculator() {
                 severity: "error",
               });
             }
-          }
+          },
         );
       } else {
         showConfirm(
@@ -540,7 +579,7 @@ function MainCalculator() {
                 severity: "error",
               });
             }
-          }
+          },
         );
       }
     } catch (error) {
@@ -645,50 +684,51 @@ function MainCalculator() {
               </Box>
 
               <Grid container spacing={2}>
-                  <Grid item xs={12} sm={3} minWidth={160}>
-                    <FormControl fullWidth>
-                    <InputLabel id="transaction-type-label">Transaction Type</InputLabel>
+                <Grid item xs={12} sm={3} minWidth={160}>
+                  <FormControl fullWidth>
+                    <InputLabel id="transaction-type-label">
+                      Transaction Type
+                    </InputLabel>
                     <Select
-                        labelId="transaction-type-label"
-                        value={transactionType}
-                        label="Transaction Type"
-                        onChange={(e) => setTransactionType(e.target.value)}
+                      labelId="transaction-type-label"
+                      value={transactionType}
+                      label="Transaction Type"
+                      onChange={(e) => setTransactionType(e.target.value)}
                     >
-                        <MenuItem value="purchase">Purchase</MenuItem>
-                        <MenuItem value="sale">Sale</MenuItem>
+                      <MenuItem value="purchase">Purchase</MenuItem>
+                      <MenuItem value="sale">Sale</MenuItem>
                     </Select>
-                    </FormControl>
-                </Grid>
-                  <Grid item xs={12} sm={3} minWidth={150}>
-                    <FormControl fullWidth>
-                    <InputLabel id="stock-place-label">Stock Place</InputLabel>
-                    <Select
-                        labelId="stock-place-label"
-                        value={stockPlace}
-                        label="Stock Place"
-                        onChange={(e) => setStockPlace(e.target.value)}
-                        required
-                    >
-                        <MenuItem value="Mill">Mill</MenuItem>
-                        <MenuItem value="Godan">Godan</MenuItem>
-                        <MenuItem value="Other">Other</MenuItem>
-
-                    </Select>
-                    </FormControl>
+                  </FormControl>
                 </Grid>
                 <Grid item xs={12} sm={3} minWidth={150}>
-                    <FormControl fullWidth>
+                  <FormControl fullWidth>
+                    <InputLabel id="stock-place-label">Stock Place</InputLabel>
+                    <Select
+                      labelId="stock-place-label"
+                      value={stockPlace}
+                      label="Stock Place"
+                      onChange={(e) => setStockPlace(e.target.value)}
+                      required
+                    >
+                      <MenuItem value="Mill">Mill</MenuItem>
+                      <MenuItem value="Godan">Godan</MenuItem>
+                      <MenuItem value="Other">Other</MenuItem>
+                    </Select>
+                  </FormControl>
+                </Grid>
+                <Grid item xs={12} sm={3} minWidth={150}>
+                  <FormControl fullWidth>
                     <InputLabel id="paddy-type-label">Paddy Type</InputLabel>
                     <Select
-                        labelId="paddy-type-label"
-                        value={paddyType}
-                        label="Paddy Type"
-                        onChange={(e) => setPaddyType(e.target.value)}
+                      labelId="paddy-type-label"
+                      value={paddyType}
+                      label="Paddy Type"
+                      onChange={(e) => setPaddyType(e.target.value)}
                     >
-                        <MenuItem value="Shree Ram">Shree Ram</MenuItem>
-                        <MenuItem value="RNR">RNR</MenuItem>
+                      <MenuItem value="Shree Ram">Shree Ram</MenuItem>
+                      <MenuItem value="RNR">RNR</MenuItem>
                     </Select>
-                    </FormControl>
+                  </FormControl>
                 </Grid>
                 <Grid item xs={12} sm={3} minWidth={140}>
                   <TextField
@@ -702,8 +742,8 @@ function MainCalculator() {
                 </Grid>
               </Grid>
 
-               <Grid container spacing={2} marginTop={2} marginBottom={2}>
-                 <Grid item xs={12} sm={6}>
+              <Grid container spacing={2} marginTop={2} marginBottom={2}>
+                <Grid item xs={12} sm={6}>
                   <TextField
                     fullWidth
                     label="Customer Name"
@@ -712,14 +752,14 @@ function MainCalculator() {
                     onChange={(e) => setCustomerName(e.target.value)}
                   />
                 </Grid>
-               
-               </Grid>
+              </Grid>
 
               {/* Paddy Entries */}
               <Box sx={{ borderBottom: 1, borderColor: "divider", mb: 2 }}>
                 <Tabs value={tabValue} onChange={(e, v) => setTabValue(v)}>
                   <Tab label="Paddy Calculation" />
                   <Tab label="Interest / Adjustments" />
+                  <Tab label="Interest Calculator" />
                 </Tabs>
               </Box>
 
@@ -740,77 +780,106 @@ function MainCalculator() {
                     >
                       PADDY ENTRIES
                     </Typography>
-                    <DndContext 
-                      sensors={sensors} 
-                      collisionDetection={closestCenter} 
+                    <DndContext
+                      sensors={sensors}
+                      collisionDetection={closestCenter}
                       onDragEnd={handleDragEndPaddyEntries}
                     >
-                      <SortableContext items={paddyEntries.map(e => e.id)}>
+                      <SortableContext items={paddyEntries.map((e) => e.id)}>
                         {paddyEntries.map((entry, index) => (
                           <SortableItem key={entry.id} id={entry.id}>
-                            <Grid
-                              container
-                              spacing={1.5}
-                              sx={{ mb: 1.5, alignItems: 'center' }}
-                            >
-                              <Grid item xs={12} sm={3}>
-                                <TextField
-                                  fullWidth
-                                  size="small"
-                                  label={`Weight (kg)`}
-                                  type="number"
-                                  value={entry.weight}
-                                  onChange={(e) => {
-                                    const list = [...paddyEntries];
-                                    list[index].weight = e.target.value;
-                                    setPaddyEntries(list);
-                                  }}
-                                />
-                              </Grid>
-                              <Grid item xs={12} sm={3}>
-                                <TextField
-                                  fullWidth
-                                  size="small"
-                                  label="Bags"
-                                  type="number"
-                                  value={entry.bags}
-                                  onChange={(e) => {
-                                    const list = [...paddyEntries];
-                                    list[index].bags = e.target.value;
-                                    setPaddyEntries(list);
-                                  }}
-                                />
-                              </Grid>
-                              <Grid item xs={12} sm={4}>
-                                <TextField
-                                  fullWidth
-                                  size="small"
-                                  label="Entry Date"
-                                  type="date"
-                                  InputLabelProps={{ shrink: true }}
-                                  value={entry.date || date}
-                                  onChange={(e) => {
-                                    const list = [...paddyEntries];
-                                    list[index].date = e.target.value;
-                                    setPaddyEntries(list);
-                                  }}
-                                />
-                              </Grid>
-                              <Grid item xs={12} sm={2} display="flex" alignItems="center">
-                                <IconButton
-                                  color="error"
-                                  onClick={() => {
-                                    if (paddyEntries.length > 1)
-                                      setPaddyEntries(
-                                        paddyEntries.filter((p) => p.id !== entry.id)
-                                      );
-                                  }}
-                                  disabled={paddyEntries.length === 1}
+                            {({ attributes, listeners }) => (
+                              <Grid
+                                container
+                                spacing={1.5}
+                                sx={{ mb: 1.5, alignItems: "center" }}
+                              >
+                                <Grid
+                                  item
+                                  xs={1}
+                                  sm={1}
+                                  display="flex"
+                                  alignItems="center"
                                 >
-                                  <DeleteIcon />
-                                </IconButton>
+                                  <IconButton
+                                    size="small"
+                                    aria-label="Drag to reorder"
+                                    {...attributes}
+                                    {...listeners}
+                                  >
+                                    <DragIndicatorIcon />
+                                  </IconButton>
+                                </Grid>
+                                <Grid item xs={11} sm={3}>
+                                  <TextField
+                                    fullWidth
+                                    size="small"
+                                    label={`Weight (kg)`}
+                                    type="number"
+                                    value={entry.weight}
+                                    onChange={(e) => {
+                                      const list = [...paddyEntries];
+                                      list[index].weight = e.target.value;
+                                      setPaddyEntries(list);
+                                    }}
+                                    onKeyDown={(e) => e.stopPropagation()}
+                                  />
+                                </Grid>
+                                <Grid item xs={12} sm={3}>
+                                  <TextField
+                                    fullWidth
+                                    size="small"
+                                    label="Bags"
+                                    type="number"
+                                    value={entry.bags}
+                                    onChange={(e) => {
+                                      const list = [...paddyEntries];
+                                      list[index].bags = e.target.value;
+                                      setPaddyEntries(list);
+                                    }}
+                                    onKeyDown={(e) => e.stopPropagation()}
+                                  />
+                                </Grid>
+                                <Grid item xs={12} sm={4}>
+                                  <TextField
+                                    fullWidth
+                                    size="small"
+                                    label="Entry Date"
+                                    type="date"
+                                    InputLabelProps={{ shrink: true }}
+                                    value={entry.date || date}
+                                    onChange={(e) => {
+                                      const list = [...paddyEntries];
+                                      list[index].date = e.target.value;
+                                      setPaddyEntries(list);
+                                    }}
+                                    onKeyDown={(e) => e.stopPropagation()}
+                                  />
+                                </Grid>
+                                <Grid
+                                  item
+                                  xs={12}
+                                  sm={1}
+                                  display="flex"
+                                  alignItems="center"
+                                >
+                                  <IconButton
+                                    color="error"
+                                    onClick={() => {
+                                      if (paddyEntries.length > 1)
+                                        setPaddyEntries(
+                                          paddyEntries.filter(
+                                            (p) => p.id !== entry.id,
+                                          ),
+                                        );
+                                    }}
+                                    disabled={paddyEntries.length === 1}
+                                  >
+                                    <DeleteIcon />
+                                  </IconButton>
+                                </Grid>
                               </Grid>
-                            </Grid>
+                            )}
                           </SortableItem>
                         ))}
                       </SortableContext>
@@ -822,7 +891,12 @@ function MainCalculator() {
                       onClick={() =>
                         setPaddyEntries([
                           ...paddyEntries,
-                          { id: uuidv4(), weight: "", bags: "", date: new Date().toISOString().split("T")[0] },
+                          {
+                            id: uuidv4(),
+                            weight: "",
+                            bags: "",
+                            date: new Date().toISOString().split("T")[0],
+                          },
                         ])
                       }
                     >
@@ -867,72 +941,98 @@ function MainCalculator() {
                   <Divider sx={{ mb: 2 }} textAlign="left">
                     <Chip label="Adjustments / Cash" />
                   </Divider>
-                  <DndContext 
-                    sensors={sensors} 
-                    collisionDetection={closestCenter} 
+                  <DndContext
+                    sensors={sensors}
+                    collisionDetection={closestCenter}
                     onDragEnd={handleDragEndAdjustments}
                   >
-                    <SortableContext items={adjustments.map(a => a.id)}>
+                    <SortableContext items={adjustments.map((a) => a.id)}>
                       {adjustments.map((adj, index) => (
                         <SortableItem key={adj.id} id={adj.id}>
-                          <Grid
-                            container
-                            spacing={1}
-                            sx={{ mb: 1, alignItems: "center" }}
-                          >
-                            <Grid item xs={2}>
-                              <Chip
-                                label={adj.type === "add" ? "+" : "-"}
-                                color={adj.type === "add" ? "success" : "warning"}
-                                size="small"
-                                onClick={() => {
-                                  const list = [...adjustments];
-                                  list[index].type = list[index].type === "add" ? "sub" : "add";
-                                  setAdjustments(list);
-                                }}
-                                sx={{ cursor: 'pointer' }}
-                              />
-                            </Grid>
-                            <Grid item xs={4}>
-                              <TextField
-                                fullWidth
-                                size="small"
-                                label="Amount"
-                                type="number"
-                                value={adj.amount}
-                                onChange={(e) => {
-                                  const list = [...adjustments];
-                                  list[index].amount = e.target.value;
-                                  setAdjustments(list);
-                                }}
-                              />
-                            </Grid>
-                            <Grid item xs={5}>
-                              <TextField
-                                fullWidth
-                                size="small"
-                                label="Note (e.g. Paid Cash)"
-                                value={adj.note}
-                                onChange={(e) => {
-                                  const list = [...adjustments];
-                                  list[index].note = e.target.value;
-                                  setAdjustments(list);
-                                }}
-                              />
-                            </Grid>
-                            <Grid item xs={1}>
-                              <IconButton
-                                size="small"
-                                onClick={() =>
-                                  setAdjustments(
-                                    adjustments.filter((a) => a.id !== adj.id)
-                                  )
-                                }
+                          {({ attributes, listeners }) => (
+                            <Grid
+                              container
+                              spacing={1}
+                              sx={{ mb: 1, alignItems: "center" }}
+                            >
+                              <Grid
+                                item
+                                xs={1}
+                                display="flex"
+                                alignItems="center"
                               >
-                                <RemoveCircleOutlineIcon />
-                              </IconButton>
+                                <IconButton
+                                  size="small"
+                                  aria-label="Drag to reorder"
+                                  {...attributes}
+                                  {...listeners}
+                                >
+                                  <DragIndicatorIcon />
+                                </IconButton>
+                              </Grid>
+                              <Grid item xs={2}>
+                                <Chip
+                                  label={adj.type === "add" ? "+" : "-"}
+                                  color={
+                                    adj.type === "add" ? "success" : "warning"
+                                  }
+                                  size="small"
+                                  onClick={() => {
+                                    const list = [...adjustments];
+                                    list[index].type =
+                                      list[index].type === "add"
+                                        ? "sub"
+                                        : "add";
+                                    setAdjustments(list);
+                                  }}
+                                  sx={{ cursor: "pointer" }}
+                                />
+                              </Grid>
+                              <Grid item xs={4}>
+                                <TextField
+                                  fullWidth
+                                  size="small"
+                                  label="Amount"
+                                  type="number"
+                                  value={adj.amount}
+                                  onChange={(e) => {
+                                    const list = [...adjustments];
+                                    list[index].amount = e.target.value;
+                                    setAdjustments(list);
+                                  }}
+                                  onKeyDown={(e) => e.stopPropagation()}
+                                />
+                              </Grid>
+                              <Grid item xs={4}>
+                                <TextField
+                                  fullWidth
+                                  size="small"
+                                  label="Note (e.g. Paid Cash)"
+                                  value={adj.note}
+                                  onChange={(e) => {
+                                    const list = [...adjustments];
+                                    list[index].note = e.target.value;
+                                    setAdjustments(list);
+                                  }}
+                                  onKeyDown={(e) => e.stopPropagation()}
+                                />
+                              </Grid>
+                              <Grid item xs={1}>
+                                <IconButton
+                                  size="small"
+                                  onClick={() =>
+                                    setAdjustments(
+                                      adjustments.filter(
+                                        (a) => a.id !== adj.id,
+                                      ),
+                                    )
+                                  }
+                                >
+                                  <RemoveCircleOutlineIcon />
+                                </IconButton>
+                              </Grid>
                             </Grid>
-                          </Grid>
+                          )}
                         </SortableItem>
                       ))}
                     </SortableContext>
@@ -966,42 +1066,37 @@ function MainCalculator() {
                       + Add Charge
                     </Button>
                   </Stack>
-                  <Divider sx={{ mb: 2, mt:4 }} textAlign="left" >
+                  <Divider sx={{ mb: 2, mt: 4 }} textAlign="left">
                     <Chip label="Cash Paid / Notes" />
                   </Divider>
-                   <Grid container spacing={2} sx={{ mt: 3 }}>
-
-
-                    
-  <Grid item xs={12} sm={6} >
-    <TextField
-      fullWidth
-      label="Paid Amount"
-      type="number"
-      variant="outlined"
-      value={paidAmount}
-      onChange={(e) => setPaidAmount(e.target.value)}
-    />
-  </Grid>
-  <Grid item xs={12} >
-    <TextField
-      fullWidth
-      label="Final Notes (Optional)"
-      placeholder="Add any final notes or remarks..."
-      variant="outlined"
-      value={finalNotes}
-      onChange={(e) => setFinalNotes(e.target.value)}
-      sx={{
-        width:"20rem",
-        '& .MuiOutlinedInput-root': {
-          bgcolor: '#f5f5f5',
-        },
-      }}
-    />
-  </Grid>
-</Grid>
-
-                  
+                  <Grid container spacing={2} sx={{ mt: 3 }}>
+                    <Grid item xs={12} sm={6}>
+                      <TextField
+                        fullWidth
+                        label="Paid Amount"
+                        type="number"
+                        variant="outlined"
+                        value={paidAmount}
+                        onChange={(e) => setPaidAmount(e.target.value)}
+                      />
+                    </Grid>
+                    <Grid item xs={12}>
+                      <TextField
+                        fullWidth
+                        label="Final Notes (Optional)"
+                        placeholder="Add any final notes or remarks..."
+                        variant="outlined"
+                        value={finalNotes}
+                        onChange={(e) => setFinalNotes(e.target.value)}
+                        sx={{
+                          width: "20rem",
+                          "& .MuiOutlinedInput-root": {
+                            bgcolor: "#f5f5f5",
+                          },
+                        }}
+                      />
+                    </Grid>
+                  </Grid>
 
                   {/* Live Totals */}
                   <Paper
@@ -1091,114 +1186,140 @@ function MainCalculator() {
                       </Typography>
 
                       {/* Entries List */}
-                      <DndContext 
-                        sensors={sensors} 
-                        collisionDetection={closestCenter} 
+                      <DndContext
+                        sensors={sensors}
+                        collisionDetection={closestCenter}
                         onDragEnd={handleDragEndIntEntries}
                       >
-                        <SortableContext items={intEntries.map(e => e.id)}>
+                        <SortableContext items={intEntries.map((e) => e.id)}>
                           {intEntries.map((entry, index) => (
                             <SortableItem key={entry.id} id={entry.id}>
-                              {entry.type === "sum" ? (
-                                <Box
-                                  sx={{
-                                    my: 2,
-                                    borderTop: "2px dashed #795548",
-                                    display: "flex",
-                                    justifyContent: "center",
-                                    position: "relative",
-                                  }}
-                                >
-                                  <Chip
-                                    label="Calculation Point (Sum)"
-                                    size="small"
+                              {({ attributes, listeners }) =>
+                                entry.type === "sum" ? (
+                                  <Box
                                     sx={{
-                                      position: "absolute",
-                                      top: -12,
-                                      bgcolor: "#fff3e0",
-                                    }}
-                                  />
-                                  <IconButton
-                                    size="small"
-                                    color="error"
-                                    onClick={() =>
-                                      setIntEntries(
-                                        intEntries.filter((e) => e.id !== entry.id)
-                                      )
-                                    }
-                                    sx={{
-                                      position: "absolute",
-                                      right: 0,
-                                      top: -20,
+                                      my: 2,
+                                      borderTop: "2px dashed #795548",
+                                      display: "flex",
+                                      justifyContent: "center",
+                                      position: "relative",
                                     }}
                                   >
-                                    <RemoveCircleOutlineIcon />
-                                  </IconButton>
-                                </Box>
-                              ) : (
-                                <Grid
-                                  container
-                                  spacing={1}
-                                  sx={{ mb: 1, alignItems: "center" }}
-                                >
-                                  <Grid item xs={2}>
                                     <Chip
-                                      label={entry.type === "add" ? "+" : "-"}
-                                      color={
-                                        entry.type === "add" ? "success" : "warning"
-                                      }
+                                      label="Calculation Point (Sum)"
                                       size="small"
-                                      onClick={() => {
-                                        const list = [...intEntries];
-                                        list[index].type = list[index].type === "add" ? "sub" : "add";
-                                        setIntEntries(list);
+                                      sx={{
+                                        position: "absolute",
+                                        top: -12,
+                                        bgcolor: "#fff3e0",
                                       }}
-                                      sx={{ cursor: 'pointer' }}
                                     />
-                                  </Grid>
-                                  <Grid item xs={4}>
-                                    <TextField
-                                      size="small"
-                                      label="Amount"
-                                      type="number"
-                                      value={entry.amount}
-                                      onChange={(e) => {
-                                        const list = [...intEntries];
-                                        list[index].amount = e.target.value;
-                                        setIntEntries(list);
-                                      }}
-                                      fullWidth
-                                    />
-                                  </Grid>
-                                  <Grid item xs={5}>
-                                    <TextField
-                                      size="small"
-                                      label="Note"
-                                      value={entry.note}
-                                      onChange={(e) => {
-                                        const list = [...intEntries];
-                                        list[index].note = e.target.value;
-                                        setIntEntries(list);
-                                      }}
-                                      fullWidth
-                                    />
-                                  </Grid>
-                                  <Grid item xs={1}>
                                     <IconButton
                                       size="small"
+                                      color="error"
                                       onClick={() =>
                                         setIntEntries(
                                           intEntries.filter(
-                                            (e) => e.id !== entry.id
-                                          )
+                                            (e) => e.id !== entry.id,
+                                          ),
                                         )
                                       }
+                                      sx={{
+                                        position: "absolute",
+                                        right: 0,
+                                        top: -20,
+                                      }}
                                     >
                                       <RemoveCircleOutlineIcon />
                                     </IconButton>
+                                  </Box>
+                                ) : (
+                                  <Grid
+                                    container
+                                    spacing={1}
+                                    sx={{ mb: 1, alignItems: "center" }}
+                                  >
+                                    <Grid
+                                      item
+                                      xs={1}
+                                      display="flex"
+                                      alignItems="center"
+                                    >
+                                      <IconButton
+                                        size="small"
+                                        aria-label="Drag to reorder"
+                                        {...attributes}
+                                        {...listeners}
+                                      >
+                                        <DragIndicatorIcon />
+                                      </IconButton>
+                                    </Grid>
+                                    <Grid item xs={2}>
+                                      <Chip
+                                        label={entry.type === "add" ? "+" : "-"}
+                                        color={
+                                          entry.type === "add"
+                                            ? "success"
+                                            : "warning"
+                                        }
+                                        size="small"
+                                        onClick={() => {
+                                          const list = [...intEntries];
+                                          list[index].type =
+                                            list[index].type === "add"
+                                              ? "sub"
+                                              : "add";
+                                          setIntEntries(list);
+                                        }}
+                                        sx={{ cursor: "pointer" }}
+                                      />
+                                    </Grid>
+                                    <Grid item xs={4}>
+                                      <TextField
+                                        size="small"
+                                        label="Amount"
+                                        type="number"
+                                        value={entry.amount}
+                                        onChange={(e) => {
+                                          const list = [...intEntries];
+                                          list[index].amount = e.target.value;
+                                          setIntEntries(list);
+                                        }}
+                                        fullWidth
+                                        onKeyDown={(e) => e.stopPropagation()}
+                                      />
+                                    </Grid>
+                                    <Grid item xs={4}>
+                                      <TextField
+                                        size="small"
+                                        label="Note"
+                                        value={entry.note}
+                                        onChange={(e) => {
+                                          const list = [...intEntries];
+                                          list[index].note = e.target.value;
+                                          setIntEntries(list);
+                                        }}
+                                        fullWidth
+                                        onKeyDown={(e) => e.stopPropagation()}
+                                      />
+                                    </Grid>
+                                    <Grid item xs={1}>
+                                      <IconButton
+                                        size="small"
+                                        onClick={() =>
+                                          setIntEntries(
+                                            intEntries.filter(
+                                              (e) => e.id !== entry.id,
+                                            ),
+                                          )
+                                        }
+                                      >
+                                        <RemoveCircleOutlineIcon />
+                                      </IconButton>
+                                    </Grid>
                                   </Grid>
-                                </Grid>
-                              )}
+                                )
+                              }
                             </SortableItem>
                           ))}
                         </SortableContext>
@@ -1327,6 +1448,306 @@ function MainCalculator() {
                   </Box>
                 )}
               </div>
+
+              <div role="tabpanel" hidden={tabValue !== 2}>
+                {tabValue === 2 && (
+                  <Box sx={{ p: 1 }}>
+                    <Box
+                      sx={{
+                        my: 3,
+                        p: 2,
+                        border: "1px solid #bbdefb",
+                        borderRadius: 2,
+                        bgcolor: "#e3f2fd",
+                      }}
+                    >
+                      <Typography
+                        variant="subtitle2"
+                        sx={{
+                          mb: 1,
+                          color: "primary.main",
+                          fontWeight: "bold",
+                        }}
+                      >
+                        INTEREST CALCULATOR
+                      </Typography>
+
+                      <Grid container spacing={2}>
+                        <Grid item xs={12} sm={6}>
+                          <TextField
+                            fullWidth
+                            label="Principal Amount (₹)"
+                            type="number"
+                            value={interestPrincipal}
+                            onChange={(e) =>
+                              setInterestPrincipal(e.target.value)
+                            }
+                          />
+                        </Grid>
+                        <Grid item xs={12} sm={6}>
+                          <TextField
+                            fullWidth
+                            label="Interest per ₹100 per month (₹)"
+                            type="number"
+                            value={interestRate}
+                            onChange={(e) => setInterestRate(e.target.value)}
+                          />
+                        </Grid>
+                        <Grid item xs={12} sm={6}>
+                          <TextField
+                            fullWidth
+                            label="From Date"
+                            type="date"
+                            InputLabelProps={{ shrink: true }}
+                            value={interestFromDate}
+                            onChange={(e) =>
+                              setInterestFromDate(e.target.value)
+                            }
+                          />
+                        </Grid>
+                        <Grid item xs={12} sm={6}>
+                          <TextField
+                            fullWidth
+                            label="To Date"
+                            type="date"
+                            InputLabelProps={{ shrink: true }}
+                            value={interestToDate}
+                            onChange={(e) => setInterestToDate(e.target.value)}
+                          />
+                        </Grid>
+                        <Grid item xs={12}>
+                          <FormControl component="fieldset">
+                            <RadioGroup
+                              row
+                              value={interestType}
+                              onChange={(e) => setInterestType(e.target.value)}
+                            >
+                              <FormControlLabel
+                                value="simple"
+                                control={<Radio />}
+                                label="Simple Interest"
+                              />
+                              <FormControlLabel
+                                value="compound"
+                                control={<Radio />}
+                                label="Compound Interest"
+                              />
+                            </RadioGroup>
+                          </FormControl>
+                        </Grid>
+                        <Grid item xs={12}>
+                          <Stack direction="row" spacing={2}>
+                            <Button
+                              variant="contained"
+                              color="primary"
+                              onClick={() => {
+                                const principal =
+                                  Number(interestPrincipal) || 0;
+                                const interestPerHundred =
+                                  Number(interestRate) || 0;
+                                const from = new Date(interestFromDate);
+                                const to = new Date(interestToDate);
+
+                                if (!principal || !interestPerHundred) {
+                                  alert(
+                                    "Please enter principal and interest per ₹100",
+                                  );
+                                  return;
+                                }
+
+                                if (to <= from) {
+                                  alert("To Date must be after From Date");
+                                  return;
+                                }
+
+                                const diffDays = Math.floor(
+                                  (to - from) / (1000 * 60 * 60 * 24),
+                                );
+                                const years = Math.floor(diffDays / 365);
+                                const months = Math.floor(
+                                  (diffDays % 365) / 30,
+                                );
+                                const days = diffDays % 30;
+                                const totalMonths =
+                                  years * 12 + months + days / 30;
+                                const monthlyRate = interestPerHundred / 100;
+
+                                const interestAmount =
+                                  interestType === "compound"
+                                    ? principal *
+                                      (Math.pow(1 + monthlyRate, totalMonths) -
+                                        1)
+                                    : principal * monthlyRate * totalMonths;
+                                const totalAmount = principal + interestAmount;
+
+                                setInterestCalcResult({
+                                  duration: { years, months, days },
+                                  interestAmount,
+                                  totalAmount,
+                                  interestType,
+                                });
+                              }}
+                            >
+                              Calculate Interest
+                            </Button>
+                            <Button
+                              variant="outlined"
+                              color="secondary"
+                              onClick={() => {
+                                setInterestCalcResult(null);
+                              }}
+                            >
+                              Clear Result
+                            </Button>
+                            <FormControl component="fieldset">
+                              <RadioGroup
+                                row
+                                value={interestAddMode}
+                                onChange={(e) => setInterestAddMode(e.target.value)}
+                              >
+                                <FormControlLabel
+                                  value="add"
+                                  control={<Radio size="small" />}
+                                  label="Add to total"
+                                />
+                                <FormControlLabel
+                                  value="sub"
+                                  control={<Radio size="small" />}
+                                  label="Deduct from total"
+                                />
+                              </RadioGroup>
+                            </FormControl>
+                            <Button
+                              variant="outlined"
+                              color="success"
+                              onClick={() => {
+                                // Add calculated interest as entries to intEntries
+                                const principal = Number(interestPrincipal) || 0;
+                                const interestPerHundred = Number(interestRate) || 0;
+                                const from = new Date(interestFromDate);
+                                const to = new Date(interestToDate);
+
+                                if (!principal || !interestPerHundred) {
+                                  alert("Please enter principal and interest per ₹100");
+                                  return;
+                                }
+                                if (to <= from) {
+                                  alert("To Date must be after From Date");
+                                  return;
+                                }
+
+                                const diffDays = Math.floor((to - from) / (1000 * 60 * 60 * 24));
+                                const years = Math.floor(diffDays / 365);
+                                const months = Math.floor((diffDays % 365) / 30);
+                                const days = diffDays % 30;
+                                const totalMonths = years * 12 + months + days / 30;
+                                const monthlyRate = interestPerHundred / 100;
+
+                                const interestAmount =
+                                  interestType === "compound"
+                                    ? principal * (Math.pow(1 + monthlyRate, totalMonths) - 1)
+                                    : principal * monthlyRate * totalMonths;
+
+                                // Create two entries: Principal (informational) and Interest (add/sub)
+                                const principalEntry = {
+                                  id: uuidv4(),
+                                  type: "add",
+                                  amount: principal,
+                                  note: `Principal`,
+                                };
+
+                                const interestEntry = {
+                                  id: uuidv4(),
+                                  type: interestAddMode === "add" ? "add" : "sub",
+                                  amount: Number(interestAmount.toFixed(2)),
+                                  note: `Interest (${interestType}) - ${years}y ${months}m ${days}d @ ${interestPerHundred} per ₹100`,
+                                };
+
+                                const sumEntry = { id: uuidv4(), type: "sum" };
+
+                                setIntEntries((prev) => [...prev, principalEntry, interestEntry, sumEntry]);
+
+                                // Clear calculator inputs
+                                setInterestPrincipal("");
+                                setInterestRate("");
+                                setInterestCalcResult(null);
+                                setInterestFromDate(new Date().toISOString().split("T")[0]);
+                                setInterestToDate(new Date().toISOString().split("T")[0]);
+                              }}
+                            >
+                              Add Interest to Entries
+                            </Button>
+                            <Button
+                              variant="contained"
+                              color="primary"
+                              onClick={() => {
+                                // Add current intEntries as an interest record to print queue
+                                if (!intEntries || intEntries.length === 0) {
+                                  alert("No interest entries to print. Add entries first.");
+                                  return;
+                                }
+
+                                const rec = {
+                                  id: uuidv4(),
+                                  type: "interest",
+                                  customerName: customerName || "Interest Calc",
+                                  date: new Date().toISOString(),
+                                  entries: intEntries,
+                                };
+
+                                const res = addToPrintQueue(rec);
+                                if (!res.success) {
+                                  alert(res.message || "Failed to add to print queue");
+                                }
+                              }}
+                            >
+                              Add To Print Queue
+                            </Button>
+                          </Stack>
+                        </Grid>
+
+                        {interestCalcResult && (
+                          <Grid item xs={12}>
+                            <Paper
+                              elevation={0}
+                              sx={{ p: 2, bgcolor: "#ffffff", borderRadius: 2 }}
+                            >
+                              <Typography variant="subtitle2" sx={{ mb: 1 }}>
+                                Result
+                              </Typography>
+                              <Typography>
+                                Duration: {interestCalcResult.duration.years}{" "}
+                                years, {interestCalcResult.duration.months}{" "}
+                                months, {interestCalcResult.duration.days} days
+                              </Typography>
+                              <Typography>
+                                Interest Amount: ₹
+                                {interestCalcResult.interestAmount.toLocaleString(
+                                  "en-IN",
+                                  { minimumFractionDigits: 2 },
+                                )}
+                              </Typography>
+                              <Typography>
+                                Total Amount: ₹
+                                {interestCalcResult.totalAmount.toLocaleString(
+                                  "en-IN",
+                                  { minimumFractionDigits: 2 },
+                                )}
+                              </Typography>
+                              <Typography>
+                                Interest Type:{" "}
+                                {interestCalcResult.interestType === "compound"
+                                  ? "Compound"
+                                  : "Simple"}
+                              </Typography>
+                            </Paper>
+                          </Grid>
+                        )}
+                      </Grid>
+                    </Box>
+                  </Box>
+                )}
+              </div>
             </Paper>
           </Grid>
 
@@ -1359,7 +1780,7 @@ function MainCalculator() {
               >
                 <SortableContext
                   items={printQueue.map(
-                    (item, index) => item?.id ?? `empty-${index}`
+                    (item, index) => item?.id ?? `empty-${index}`,
                   )}
                   strategy={rectSortingStrategy}
                 >
@@ -1485,12 +1906,91 @@ function MainCalculator() {
       >
         <DialogTitle>Bill Preview</DialogTitle>
         <DialogContent dividers sx={{ bgcolor: "#f5f5f5", p: 2 }}>
-          {selectedBill?.type === "interest" ? (
-            <InterestReceipt data={selectedBill} previewMode={true} />
-          ) : (
-            <BillReceipt data={selectedBill} previewMode={true} />
-          )}
+          <div ref={previewRef}>
+            {selectedBill?.type === "interest" ? (
+              <InterestReceipt data={selectedBill} previewMode={true} />
+            ) : (
+              <BillReceipt data={selectedBill} previewMode={true} />
+            )}
+          </div>
         </DialogContent>
+        <DialogActions>
+          <Button
+            onClick={async () => {
+              if (!previewRef.current) return;
+              try {
+                const canvas = await html2canvas(previewRef.current, { scale: 2 });
+                // convert to blob
+                const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/png'));
+
+                if (navigator.clipboard && window.ClipboardItem) {
+                  try {
+                    await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
+                    setSnackbar({ open: true, message: 'Image copied to clipboard', severity: 'success' });
+                  } catch (err) {
+                    console.error('Clipboard write failed', err);
+                    setSnackbar({ open: true, message: 'Copy failed: ' + (err?.message || ''), severity: 'error' });
+                  }
+                } else {
+                  alert('Copy to clipboard is not supported in this browser. Use Save Image instead.');
+                }
+              } catch (err) {
+                console.error('Copy failed', err);
+                setSnackbar({ open: true, message: 'Copy failed', severity: 'error' });
+              }
+            }}
+          >
+            Copy Image
+          </Button>
+          <Button
+            onClick={async () => {
+              if (!previewRef.current) return;
+              try {
+                const canvas = await html2canvas(previewRef.current, { scale: 2 });
+                const dataUrl = canvas.toDataURL("image/png");
+                const link = document.createElement('a');
+                link.href = dataUrl;
+                link.download = `${selectedBill?.customerName || 'bill'}.png`;
+                document.body.appendChild(link);
+                link.click();
+                link.remove();
+                setSnackbar({ open: true, message: 'Image saved', severity: 'success' });
+              } catch (err) {
+                console.error('Save image failed', err);
+                setSnackbar({ open: true, message: 'Failed to save image', severity: 'error' });
+              }
+            }}
+          >
+            Save Image
+          </Button>
+          <Button
+            onClick={async () => {
+              if (!previewRef.current) return;
+              try {
+                const canvas = await html2canvas(previewRef.current, { scale: 2 });
+                const dataUrl = canvas.toDataURL("image/png");
+                const res = await fetch(dataUrl);
+                const blob = await res.blob();
+
+                const file = new File([blob], `${selectedBill?.customerName || 'bill'}.png`, { type: 'image/png' });
+
+                if (navigator.canShare && navigator.canShare({ files: [file] })) {
+                  await navigator.share({ files: [file], title: selectedBill?.customerName || 'Bill' });
+                  return;
+                }
+
+                const text = encodeURIComponent('Please see attached bill image. Save and attach the image.');
+                const waUrl = `https://api.whatsapp.com/send?text=${text}`;
+                window.open(waUrl, '_blank');
+              } catch (err) {
+                console.error('Share failed', err);
+                setSnackbar({ open: true, message: 'Share failed', severity: 'error' });
+              }
+            }}
+          >
+            Share
+          </Button>
+        </DialogActions>
       </Dialog>
 
       {/* Hidden Print Template */}
@@ -1517,15 +2017,17 @@ function MainCalculator() {
       >
         <DialogTitle>{confirmDialog.title}</DialogTitle>
         <DialogContent>
-          <DialogContentText>
-            {confirmDialog.message}
-          </DialogContentText>
+          <DialogContentText>{confirmDialog.message}</DialogContentText>
         </DialogContent>
         <DialogActions>
           <Button onClick={() => handleConfirmClose(false)} color="primary">
             Cancel
           </Button>
-          <Button onClick={() => handleConfirmClose(true)} color="error" autoFocus>
+          <Button
+            onClick={() => handleConfirmClose(true)}
+            color="error"
+            autoFocus
+          >
             Confirm
           </Button>
         </DialogActions>
@@ -1542,21 +2044,21 @@ function App() {
         document.activeElement.blur();
       }
     };
-    
+
     window.addEventListener("wheel", handleWheel);
     return () => window.removeEventListener("wheel", handleWheel);
   }, []);
 
   return (
     <PrintQueueProvider>
-        <ThemeProvider theme={theme}>
+      <ThemeProvider theme={theme}>
         <CssBaseline />
         <Routes>
-            <Route path="/" element={<MainCalculator />} />
-            <Route path="/records" element={<RecordsPage />} />
-            <Route path="/dashboard" element={<DashboardPage />} />
+          <Route path="/" element={<MainCalculator />} />
+          <Route path="/records" element={<RecordsPage />} />
+          <Route path="/dashboard" element={<DashboardPage />} />
         </Routes>
-        </ThemeProvider>
+      </ThemeProvider>
     </PrintQueueProvider>
   );
 }

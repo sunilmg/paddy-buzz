@@ -1,7 +1,7 @@
-import React from 'react';
-import { useSortable } from '@dnd-kit/sortable';
-import { CSS } from '@dnd-kit/utilities';
-import { Box } from '@mui/material';
+import React from "react";
+import { useSortable } from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
+import { Box } from "@mui/material";
 
 export function SortableItem(props) {
   const {
@@ -10,7 +10,7 @@ export function SortableItem(props) {
     setNodeRef,
     transform,
     transition,
-    isDragging
+    isDragging,
   } = useSortable({ id: props.id });
 
   const style = {
@@ -19,12 +19,14 @@ export function SortableItem(props) {
     zIndex: isDragging ? 999 : "auto",
     position: "relative",
     height: "100%",
-    // touchAction: "none" // Recommended for pointer events
+    touchAction: "none", // Recommended for pointer events
   };
 
   return (
     <Box ref={setNodeRef} style={style} {...attributes} {...listeners}>
-      {props.children}
+      {typeof props.children === "function"
+        ? props.children({ attributes, listeners })
+        : props.children}
     </Box>
   );
 }
